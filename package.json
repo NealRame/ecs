@@ -1,0 +1,35 @@
+{
+  "name": "@nealrame/ecs",
+  "version": "0.0.1",
+  "description": "Typescript Entity Component System library",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "./scripts/build.sh",
+    "clean": "./scripts/clean.sh",
+    "dev": "webpack serve --config ./src/app/webpack.config.js",
+    "test": "./scripts/test.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NealRame/ecs.git"
+  },
+  "keywords": [
+    "ECS"
+  ],
+  "author": "Julien Graziano <julien@graziano.fr>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/NealRame/ecs/issues"
+  },
+  "homepage": "https://github.com/NealRame/ecs#readme",
+  "devDependencies": {
+    "css-loader": "^6.7.1",
+    "html-webpack-plugin": "^5.5.0",
+    "style-loader": "^3.3.1",
+    "ts-loader": "^9.4.1",
+    "typescript": "^4.8.4",
+    "webpack": "^5.74.0",
+    "webpack-cli": "^4.10.0",
+    "webpack-dev-server": "^4.11.1"
+  }
+}
