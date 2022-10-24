@@ -68,10 +68,58 @@ export class ECS {
     private entities_: Map<Entity, ComponentContainer>
     private systems_: Map<ISystem, Set<Entity>>
 
+    private postponedEntityDeletions_ = new Array<Entity>()
+
     private nextEntity_ = 0
 
+    private checkEntity_(entity: Entity) {
+        for (const system of this.systems_.keys()) {
+            this.checkEntitySystem_(entity, system)
+        }
+    }
+
+    private checkEntitySystem_(entity: Entity, system: ISystem) {
+        const have = this.entities_.get(entity)
+        const required = system.componentsRequired
+        if (have?.hasAll(required) ?? false) {
+            this.systems_.get(system)?.add(entity)
+        } else {
+            this.systems_.get(system)?.delete(entity)
+        }
+    }
+
+    private removeEntity_(entity: Entity) {
+        this.entities_.delete(entity)
+        for (const entities of this.systems_.values()) {
+            entities.delete(entity)
+        }
+    }
+
+    private removePostponedEntities_() {
+        while (this.postponedEntityDeletions_.length > 0) {
+            this.removeEntity_(this.postponedEntityDeletions_.pop()!)
+        }
+    }
+
     /**************************************************************************
-     * Entities management ****************************************************
+     * Update *****************************************************************
+     *************************************************************************/
+
+    public constructor() {
+        this.entities_ = new Map()
+        this.systems_ = new Map()
+    }
+
+    public update(): IECS {
+        for (const [system, entities] of this.systems_.entries()) {
+            system.update(entities)
+        }
+        this.removePostponedEntities_()
+        return this
+    }
+
+    /**************************************************************************
+     * Entities/Components management *****************************************
      *************************************************************************/
 
     public addEntity()
@@ -84,10 +132,7 @@ export class ECS {
     public removeEntity(
         entity: Entity
     ): IECS {
-        this.entities_.delete(entity)
-        for (const entities of this.systems_.values()) {
-            entities.delete(entity)
-        }
+        this.postponedEntityDeletions_.push(entity)
         return this
     }
 
@@ -148,38 +193,5 @@ export class ECS {
     ): IECS {
         this.systems_.delete(system)
         return this
-    }
-
-    /**************************************************************************
-     * Update *****************************************************************
-     *************************************************************************/
-
-    public constructor() {
-        this.entities_ = new Map()
-        this.systems_ = new Map()
-    }
-
-    public update(): IECS {
-        for (const [system, entities] of this.systems_.entries()) {
-            system.update(entities)
-        }
-        return this
-    }
-
-    private checkEntity_(entity: Entity) {
-        for (const system of this.systems_.keys()) {
-            this.checkEntitySystem_(entity, system)
-        }
-        return this
-    }
-
-    private checkEntitySystem_(entity: Entity, system: ISystem) {
-        const have = this.entities_.get(entity)
-        const required = system.componentsRequired
-        if (have?.hasAll(required) ?? false) {
-            this.systems_.get(system)?.add(entity)
-        } else {
-            this.systems_.get(system)?.delete(entity)
-        }
     }
 }
