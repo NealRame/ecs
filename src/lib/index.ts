@@ -56,6 +56,7 @@ export class ComponentContainer implements IComponentContainer {
 }
 
 export interface IECS {
+    hasEntity(entity: Entity): boolean
     addEntity(entity: Entity): Entity
     removeEntity(entity: Entity): IECS
     addEntityComponent(entity: Entity, component: Component): IECS
@@ -124,6 +125,12 @@ export class ECS {
      * Entities/Components management *****************************************
      *************************************************************************/
 
+    public hasEntity(
+        entity: Entity
+    ): boolean {
+        return this.entities_.has(entity)
+    }
+
     public addEntity()
         : Entity {
         const entity = this.nextEntity_++
@@ -163,10 +170,10 @@ export class ECS {
     public getEntityComponents(
         entity: Entity,
     ): IComponentContainer {
-        if (!this.entities_.has(entity)) {
+        if (!this.hasEntity(entity)) {
             throw new Error(`Entity ${entity} does not exist.`)
         }
-        return this.entities_.get(entity)!
+        return this.entities_.get(entity) as IComponentContainer
     }
 
     /**************************************************************************
