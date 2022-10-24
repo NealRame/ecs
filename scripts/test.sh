@@ -1,10 +1,5 @@
 #! /usr/bin/env bash
 
-set -e
-set -o pipefail
-set -u
-
-export SOURCE_DIR="${SOURCE_DIR:-$PWD}"
-
-# shellcheck source=scripts/env.sh
-source "$SOURCE_DIR/scripts/env.sh"
+TS_NODE_COMPILER_OPTIONS='{"module": "commonjs"}' \
+TS_NODE_PROJECT="$PWD/src/tests/tsconfig.json" \
+    mocha -r ts-node/register "src/tests/**/*.ts"

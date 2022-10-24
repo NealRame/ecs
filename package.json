@@ -7,7 +7,18 @@
     "build": "./scripts/build.sh",
     "clean": "./scripts/clean.sh",
     "dev": "webpack serve --config ./src/app/webpack.config.js",
-    "test": "./scripts/test.sh"
+    "test": "./scripts/test.sh",
+    "watch-test": "npm-watch test"
+  },
+  "watch": {
+    "test": {
+      "patterns": [
+        "src/lib/**/*",
+        "src/tests/**/*"
+      ],
+      "extensions": "ts",
+      "quiet": true
+    }
   },
   "repository": {
     "type": "git",
