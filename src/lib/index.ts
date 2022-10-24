@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types */
+
 import {
     TConstructor,
 } from "@nealrame/ts-injector"
