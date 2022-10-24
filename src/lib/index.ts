@@ -97,7 +97,7 @@ export class ECS {
 
     private removePostponedEntities_() {
         while (this.postponedEntityDeletions_.length > 0) {
-            this.removeEntity_(this.postponedEntityDeletions_.pop()!)
+            this.removeEntity_(this.postponedEntityDeletions_.pop() as Entity)
         }
     }
 
