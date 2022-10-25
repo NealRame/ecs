@@ -7,52 +7,19 @@ import {
 } from "../lib"
 
 describe("ECS", () => {
-    it("should have a 'hasEntity' method", () => {
-        expect(new ECS())
-            .to.have.property("hasEntity")
-            .that.is.a("function")
+    describe("#update()", () => {
+        it("should be a method", () => {
+            expect(new ECS())
+                .to.have.property("update")
+                .that.is.a("function")
+        })
     })
-    it("should have a 'addEntity' method", () => {
-        expect(new ECS())
-            .to.have.property("addEntity")
-            .that.is.a("function")
-    })
-    it("should have a 'removeEntity' method", () => {
-        expect(new ECS())
-            .to.have.property("removeEntity")
-            .that.is.a("function")
-    })
-    it("should have a 'addEntityComponent' method", () => {
-        expect(new ECS())
-            .to.have.property("addEntityComponent")
-            .that.is.a("function")
-    })
-    it("should have a 'removeEntityComponent' method", () => {
-        expect(new ECS())
-            .to.have.property("removeEntityComponent")
-            .that.is.a("function")
-    })
-    it("should have a 'getEntityComponents' method", () => {
-        expect(new ECS())
-            .to.have.property("getEntityComponents")
-            .that.is.a("function")
-    })
-    it("should have a 'addSystem' method", () => {
-        expect(new ECS())
-            .to.have.property("addSystem")
-            .that.is.a("function")
-    })
-    it("should have a 'removeSystem' method", () => {
-        expect(new ECS())
-            .to.have.property("removeSystem")
-            .that.is.a("function")
-    })
-    it("should have a 'update' method", () => {
-        expect(new ECS())
-            .to.have.property("update")
-            .that.is.a("function")
-    })
-    describe("ECS#addEntity()", () => {
+    describe("#addEntity()", () => {
+        it("shoud be a method", () => {
+            expect(new ECS())
+                .to.have.property("addEntity")
+                .that.is.a("function")
+        })
         it("should return an entity", () => {
             expect(new ECS().addEntity()).to.be.a("number")
         })
@@ -63,7 +30,12 @@ describe("ECS", () => {
             expect(entity1).to.not.equal(entity2)
         })
     })
-    describe("ECS#hasEntity()", () => {
+    describe("#hasEntity()", () => {
+        it("should be a method", () => {
+            expect(new ECS())
+                .to.have.property("hasEntity")
+                .that.is.a("function")
+        })
         it("should return false if the entity has not been added", () => {
             expect(new ECS().hasEntity(0)).to.be.false
         })
@@ -73,7 +45,12 @@ describe("ECS", () => {
             expect(ecs.hasEntity(entity)).to.be.true
         })
     })
-    describe("ECS#removeEntity()", () => {
+    describe("#removeEntity()", () => {
+        it("should be a method", () => {
+            expect(new ECS())
+                .to.have.property("removeEntity")
+                .that.is.a("function")
+        })
         it("should return the ECS", () => {
             const ecs = new ECS()
             const entity = ecs.addEntity()
@@ -91,6 +68,41 @@ describe("ECS", () => {
             ecs.removeEntity(entity)
             ecs.update()
             expect(ecs.hasEntity(entity)).to.be.false
+        })
+    })
+    describe("#addEntityComponent()", () => {
+        it("should be a method", () => {
+            expect(new ECS())
+                .to.have.property("addEntityComponent")
+                .that.is.a("function")
+        })
+    })
+    describe("#removeEntityComponent()", () => {
+        it("should be a method", () => {
+            expect(new ECS())
+                .to.have.property("removeEntityComponent")
+                .that.is.a("function")
+        })
+    })
+    describe("#getEntityComponents()", () => {
+        it("should be a method", () => {
+            expect(new ECS())
+                .to.have.property("getEntityComponents")
+                .that.is.a("function")
+        })
+    })
+    describe("#addSystem()", () => {
+        it("should be a method", () => {
+            expect(new ECS())
+                .to.have.property("addSystem")
+                .that.is.a("function")
+        })
+    })
+    describe("#removeSystem()", () => {
+        it("should be a method", () => {
+            expect(new ECS())
+                .to.have.property("removeSystem")
+                .that.is.a("function")
         })
     })
 })
