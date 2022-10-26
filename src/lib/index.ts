@@ -62,6 +62,7 @@ export interface IECS {
     addEntityComponent(entity: Entity, component: Component): IECS
     removeEntityComponent(entity: Entity, componentType: Function): IECS
     getEntityComponents(entity: Entity): IComponentContainer
+    getEntityComponent<T extends Component>(entity: Entity, componentType: ComponentConstructor<T>): T
     addSystem(system: ISystem): IECS
     removeSystem(system: ISystem): IECS
     update(): IECS
@@ -147,7 +148,7 @@ export class ECS {
 
     public addEntityComponent<T extends Component>(
         entity: Entity,
-        component: Component,
+        component: T,
     ): IECS {
         this.entities_.get(entity)?.add(component)
         // As we add a component to the given entity we have to add that entity
@@ -174,6 +175,17 @@ export class ECS {
             throw new Error(`Entity ${entity} does not exist.`)
         }
         return this.entities_.get(entity) as IComponentContainer
+    }
+
+    public getEntityComponent<T extends Component>(
+        entity: Entity,
+        componentType: ComponentConstructor<T>,
+    ): T {
+        const component = this.getEntityComponents(entity).get(componentType)
+        if (component == null) {
+            throw new Error(`Entity ${entity} does not have component ${componentType.name}.`)
+        }
+        return component
     }
 
     /**************************************************************************
