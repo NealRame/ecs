@@ -91,6 +91,13 @@ describe("ECS", () => {
                 .that.is.a("function")
         })
     })
+    describe("#getEntityComponent()", () => {
+        it("should be a method", () => {
+            expect(new ECS())
+                .to.have.property("getEntityComponent")
+                .that.is.a("function")
+        })
+    })
     describe("#addSystem()", () => {
         it("should be a method", () => {
             expect(new ECS())
