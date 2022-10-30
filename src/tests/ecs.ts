@@ -3,6 +3,7 @@ import {
 } from "chai"
 
 import {
+    Component,
     ECS,
 } from "../lib"
 
@@ -75,6 +76,17 @@ describe("ECS", () => {
             expect(new ECS())
                 .to.have.property("addEntityComponent")
                 .that.is.a("function")
+        })
+        it("should add a given component to a given entity", () => {
+            const SomeComponent = class extends Component {}
+            const ecs = new ECS()
+            const entity = ecs.addEntity()
+
+            ecs.addEntityComponent(entity, new SomeComponent)
+
+            const components = ecs.getEntityComponents(entity)
+
+            expect(components.has(SomeComponent)).to.be.true
         })
     })
     describe("#removeEntityComponent()", () => {
