@@ -20,10 +20,23 @@ export interface ISystem {
 export interface IComponentContainer {
     get<T extends Component>(component: ComponentConstructor<T>): T
     has(componentType: Function): boolean
-    hasAll(componentTypes: Set<Function>): boolean
+    hasAll(componentTypes: Iterable<Function>): boolean
 }
 
-export class ComponentContainer implements IComponentContainer {
+export interface IECS {
+    hasEntity(entity: Entity): boolean
+    addEntity(entity: Entity): Entity
+    removeEntity(entity: Entity): IECS
+    addEntityComponent(entity: Entity, component: Component): IECS
+    getEntityComponents(entity: Entity): IComponentContainer
+    getEntityComponent<T extends Component>(entity: Entity, componentType: ComponentConstructor<T>): T
+    removeEntityComponent(entity: Entity, componentType: Function): IECS
+    addSystem(system: ISystem): IECS
+    removeSystem(system: ISystem): IECS
+    update(): IECS
+}
+
+class ComponentContainer implements IComponentContainer {
     private components_ = new Map<Function, Component>()
 
     public add(component: Component) {
@@ -34,9 +47,13 @@ export class ComponentContainer implements IComponentContainer {
         this.components_.delete(componentType)
     }
 
-    public get<T extends Component>(component: ComponentConstructor<T>)
+    public get<T extends Component>(componentType: ComponentConstructor<T>)
         : T {
-        return this.components_.get(component) as T
+        const component = this.components_.get(componentType)
+        if (component == null) {
+            throw new Error(`Entity does not have component ${componentType.name}.`)
+        }
+        return component as T
     }
 
     public has(componentType: Function)
@@ -44,7 +61,7 @@ export class ComponentContainer implements IComponentContainer {
         return this.components_.has(componentType)
     }
 
-    public hasAll(componentTypes: Set<Function>)
+    public hasAll(componentTypes: Iterable<Function>)
         : boolean {
         for (const componentType of componentTypes) {
             if (!this.has(componentType)) {
@@ -55,26 +72,35 @@ export class ComponentContainer implements IComponentContainer {
     }
 }
 
-export interface IECS {
-    hasEntity(entity: Entity): boolean
-    addEntity(entity: Entity): Entity
-    removeEntity(entity: Entity): IECS
-    addEntityComponent(entity: Entity, component: Component): IECS
-    removeEntityComponent(entity: Entity, componentType: Function): IECS
-    getEntityComponents(entity: Entity): IComponentContainer
-    getEntityComponent<T extends Component>(entity: Entity, componentType: ComponentConstructor<T>): T
-    addSystem(system: ISystem): IECS
-    removeSystem(system: ISystem): IECS
-    update(): IECS
+function createComponentContainerView(
+    componentContainer: ComponentContainer
+): IComponentContainer {
+    return {
+        get<T extends Component>(
+            componentType: ComponentConstructor<T>
+        ): T {
+            return componentContainer.get(componentType)
+        },
+        has(
+            componentType: Function
+        ): boolean {
+            return componentContainer.has(componentType)
+        },
+        hasAll(
+            componentTypes: Iterable<Function>
+        ): boolean {
+            return componentContainer.hasAll(componentTypes)
+        }
+    }
 }
 
 export class ECS {
+    private nextEntity_ = 0
     private entities_: Map<Entity, ComponentContainer>
+
     private systems_: Map<ISystem, Set<Entity>>
 
     private postponedEntityDeletions_ = new Array<Entity>()
-
-    private nextEntity_ = 0
 
     private checkEntity_(entity: Entity) {
         for (const system of this.systems_.keys()) {
@@ -174,7 +200,7 @@ export class ECS {
         if (!this.hasEntity(entity)) {
             throw new Error(`Entity ${entity} does not exist.`)
         }
-        return this.entities_.get(entity) as IComponentContainer
+        return createComponentContainerView(this.entities_.get(entity) as ComponentContainer)
     }
 
     public getEntityComponent<T extends Component>(
