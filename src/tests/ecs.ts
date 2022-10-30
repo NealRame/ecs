@@ -95,6 +95,18 @@ describe("ECS", () => {
                 .to.have.property("removeEntityComponent")
                 .that.is.a("function")
         })
+        it("should remove a given component from a given entity", () => {
+            const SomeComponent = class extends Component {}
+            const ecs = new ECS()
+            const entity = ecs.addEntity()
+
+            ecs.addEntityComponent(entity, new SomeComponent)
+            ecs.removeEntityComponent(entity, SomeComponent)
+
+            const components = ecs.getEntityComponents(entity)
+
+            expect(components.has(SomeComponent)).to.be.false
+        })
     })
     describe("#getEntityComponents()", () => {
         it("should be a method", () => {
