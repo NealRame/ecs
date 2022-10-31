@@ -12,6 +12,12 @@ interface IVector {
     y: number
 }
 
+class Vector {
+    public static dot(u: IVector, v: IVector): number {
+        return u.x*v.x + u.y*v.y
+    }
+}
+
 class Color extends Component {
     public constructor(
         public r: number,
@@ -30,9 +36,6 @@ class Course extends Component implements IVector {
     public static South = () => new Course( 0,  1)
     public static East  = () => new Course( 1,  0)
     public static West  = () => new Course(-1,  0)
-}
-
-class Head extends Component {
 }
 
 class Position extends Component implements IVector {
@@ -108,7 +111,7 @@ class MoveSnakeSystem implements ISystem {
 }
 
 class ControlSnakeSystem implements ISystem {
-    public readonly componentsRequired = new Set([Course, Head, Position])
+    public readonly componentsRequired = new Set([Course, Position])
     public ecs: ECS
 
     private course_: IVector | null = null
@@ -119,41 +122,52 @@ class ControlSnakeSystem implements ISystem {
         window.addEventListener("keydown", (event) => {
             switch (event.key) {
             case "ArrowUp":
-                this.course_ = { x: 0, y: -1 }
+                this.course_ = { x:  0, y: -1 }
                 break
             case "ArrowDown":
-                this.course_ = { x: 0, y: 1 }
+                this.course_ = { x:  0, y:  1 }
                 break
             case "ArrowLeft":
-                this.course_ = { x: -1, y: 0 }
+                this.course_ = { x: -1, y:  0 }
                 break
             case "ArrowRight":
-                this.course_ = { x: 1, y: 0 }
+                this.course_ = { x:  1, y:  0 }
                 break
             }
         })
     }
 
-    private updateCourse_(course: IVector) {
+    private updateCourse_(head: Entity) {
         if (this.course_ !== null) {
-            course.x = this.course_.x
-            course.y = this.course_.y
-            this.course_ = null
+            const course = this.ecs.getEntityComponent(head, Course)
+            if (Vector.dot(this.course_, course) === 0) {
+                course.x = this.course_.x
+                course.y = this.course_.y
+                this.course_ = null
+            }
         }
     }
 
-    private checkCollision_({ x, y }: IVector) {
+    private checkCollision_(head: Entity, tail: Array<Entity>) {
         const { width, height } = this.context_.canvas
+        const { x, y } = this.ecs.getEntityComponent(head, Position)
+        // check collision with canvas border
         if (x < 0 || x >= width/10 || y < 0 || y >= height/10) {
-            throw new Error("Snake is out of the canvas")
+            throw new Error("Snake is out of the canvas.")
+        }
+        // check collision with snake tail
+        for (const entity of tail) {
+            const position = this.ecs.getEntityComponent(entity, Position)
+            if (position.x === x && position.y === y) {
+                throw new Error("Snake is eating itself.")
+            }
         }
     }
 
     public update(entities: Set<Entity>) {
-        for (const entity of entities) {
-            this.updateCourse_(this.ecs.getEntityComponent(entity, Course))
-            this.checkCollision_(this.ecs.getEntityComponent(entity, Position))
-        }
+        const [head, ...tail] = Array.from(entities)
+        this.updateCourse_(head)
+        this.checkCollision_(head, tail)
     }
 }
 
@@ -161,9 +175,6 @@ function createSnake(ecs: ECS, x: number, y: number, length: number) {
     for (let i = 0; i < length; i++) {
         const entity = ecs.addEntity()
 
-        if (i === 0) {
-            ecs.addEntityComponent(entity, new Head())
-        }
         ecs.addEntityComponent(entity, new Position(x, y + i))
         ecs.addEntityComponent(entity, new Color(255, 255, 255))
         ecs.addEntityComponent(entity, Course.North())
@@ -192,6 +203,6 @@ createSnake(ecs, 10, 10, 5)
         ecs.update()
         requestAnimationFrame(loop)
     } catch (e) {
-        console.log("Game over")
+        console.log("Game over!", e.message)
     }
 })()
