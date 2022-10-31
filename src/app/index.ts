@@ -45,6 +45,8 @@ class Position extends Component implements IVector {
     ) { super() }
 }
 
+class Fruit extends Component {}
+
 class RenderSystem implements ISystem {
     public readonly componentsRequired = new Set([Color, Position])
     public ecs: ECS
@@ -171,6 +173,14 @@ class ControlSnakeSystem implements ISystem {
     }
 }
 
+function createFruit(ecs: ECS, x: number, y: number) {
+    const entity = ecs.addEntity()
+
+    ecs.addEntityComponent(entity, new Position(x, y))
+    ecs.addEntityComponent(entity, new Color(255, 0, 0))
+    ecs.addEntityComponent(entity, new Fruit())
+}
+
 function createSnake(ecs: ECS, x: number, y: number, length: number) {
     for (let i = 0; i < length; i++) {
         const entity = ecs.addEntity()
@@ -197,6 +207,7 @@ ecs.addSystem(new MoveSnakeSystem(20))
 ecs.addSystem(new RenderSystem(context))
 
 createSnake(ecs, 10, 10, 5)
+createFruit(ecs, 20, 20)
 
 ;(function loop() {
     try {
