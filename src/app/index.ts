@@ -1,8 +1,11 @@
 import {
     type ISystem,
     Component,
+    ComponentQueryHasAll,
+    ComponentQueryHasOne,
     ECS,
     Entity,
+    ISystemUpdateCallback,
 } from "../lib"
 
 import "./style.css"
@@ -46,15 +49,17 @@ class Position extends Component implements IVector {
 }
 
 class Fruit extends Component {}
+class SnakeHead extends Component {}
+class SnakeTail extends Component {}
 
 class RenderSystem implements ISystem {
-    public readonly componentsRequired = new Set([Color, Position])
     public ecs: ECS
+
+    public readonly accept = ComponentQueryHasAll(Color, Position)
 
     constructor(
         private context_: CanvasRenderingContext2D,
     ) { }
-
     public update(entities: Set<Entity>) {
         context.fillStyle = "#000"
         context.fillRect(0, 0, canvas.width, canvas.height)
@@ -75,8 +80,9 @@ class RenderSystem implements ISystem {
 }
 
 class MoveSnakeSystem implements ISystem {
-    public readonly componentsRequired = new Set([Position, Course])
     public ecs: ECS
+
+    public readonly accept = ComponentQueryHasAll(Position, Course)
 
     private frame_ = 0
 
@@ -113,8 +119,9 @@ class MoveSnakeSystem implements ISystem {
 }
 
 class ControlSnakeSystem implements ISystem {
-    public readonly componentsRequired = new Set([Course, Position])
     public ecs: ECS
+
+    public readonly accept = ComponentQueryHasAll(Course, Position)
 
     private course_: IVector | null = null
 
@@ -173,6 +180,21 @@ class ControlSnakeSystem implements ISystem {
     }
 }
 
+class ControlSnakeFruitSystem implements ISystem {
+    public ecs: ECS
+
+    public readonly accept = ComponentQueryHasOne(SnakeHead, Fruit)
+
+    public update(entities: Set<Entity>) {
+        const [e1, e2] = Array.from(entities)
+        const p1 = ecs.getEntityComponent(e1, Position)
+        const p2 = ecs.getEntityComponent(e2, Position)
+        if (p1.x === p2.x && p1.y === p2.y) {
+            console.log("Snake eat a fruit.")
+        }
+    }
+}
+
 function createFruit(ecs: ECS, x: number, y: number) {
     const entity = ecs.addEntity()
 
@@ -185,9 +207,13 @@ function createSnake(ecs: ECS, x: number, y: number, length: number) {
     for (let i = 0; i < length; i++) {
         const entity = ecs.addEntity()
 
+        ecs.addEntityComponent(entity, i > 0
+            ? new SnakeTail()
+            : new SnakeHead()
+        )
+        ecs.addEntityComponent(entity, Course.North())
         ecs.addEntityComponent(entity, new Position(x, y + i))
         ecs.addEntityComponent(entity, new Color(255, 255, 255))
-        ecs.addEntityComponent(entity, Course.North())
     }
 }
 
@@ -203,6 +229,7 @@ const context = canvas.getContext("2d")
 const ecs = new ECS()
 
 ecs.addSystem(new ControlSnakeSystem(context))
+ecs.addSystem(new ControlSnakeFruitSystem())
 ecs.addSystem(new MoveSnakeSystem(20))
 ecs.addSystem(new RenderSystem(context))
 

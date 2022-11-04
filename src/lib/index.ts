@@ -11,16 +11,33 @@ export abstract class Component {
 
 export type ComponentConstructor<T extends Component> = TConstructor<T>
 
-export interface ISystem {
-    update(entities: Set<Entity>): void
-    readonly componentsRequired: Set<Function>
-    ecs: IECS
-}
-
 export interface IComponentContainer {
     get<T extends Component>(component: ComponentConstructor<T>): T
     has(componentType: Function): boolean
     hasAll(componentTypes: Iterable<Function>): boolean
+    hasOne(componentTypes: Iterable<Function>): boolean
+}
+
+export type ISystemAcceptCallback = (componentsContainer: IComponentContainer) => boolean
+
+export function ComponentQueryHasAll(
+    ...componentTypes: Array<Function>
+): ISystemAcceptCallback {
+    return componentsContainer => componentsContainer.hasAll(componentTypes)
+}
+
+export function ComponentQueryHasOne(
+    ...componentTypes: Array<Function>
+): ISystemAcceptCallback {
+    return componentsContainer => componentsContainer.hasOne(componentTypes)
+}
+
+export type ISystemUpdateCallback = (entities: Set<Entity>) => void
+
+export interface ISystem {
+    ecs: IECS
+    readonly accept: ISystemAcceptCallback
+    readonly update: ISystemUpdateCallback
 }
 
 export interface IECS {
@@ -70,6 +87,16 @@ class ComponentContainer implements IComponentContainer {
         }
         return true
     }
+
+    public hasOne(componentTypes: Iterable<Function>)
+        : boolean {
+        for (const componentType of componentTypes) {
+            if (this.has(componentType)) {
+                return true
+            }
+        }
+        return false
+    }
 }
 
 function createComponentContainerView(
@@ -90,7 +117,12 @@ function createComponentContainerView(
             componentTypes: Iterable<Function>
         ): boolean {
             return componentContainer.hasAll(componentTypes)
-        }
+        },
+        hasOne(
+            componentTypes: Iterable<Function>
+        ): boolean {
+            return componentContainer.hasOne(componentTypes)
+        },
     }
 }
 
@@ -110,11 +142,12 @@ export class ECS {
 
     private checkEntitySystem_(entity: Entity, system: ISystem) {
         const have = this.entities_.get(entity)
-        const required = system.componentsRequired
-        if (have?.hasAll(required) ?? false) {
-            this.systems_.get(system)?.add(entity)
-        } else {
-            this.systems_.get(system)?.delete(entity)
+        if (have != null) {
+            if (system.accept(have)) {
+                this.systems_.get(system)?.add(entity)
+            } else {
+                this.systems_.get(system)?.delete(entity)
+            }
         }
     }
 
@@ -221,10 +254,6 @@ export class ECS {
     public addSystem(
         system: ISystem
     ): IECS {
-        if (system.componentsRequired.size === 0) {
-            throw new Error('System must require at least one component.')
-        }
-
         system.ecs = this
 
         this.systems_.set(system, new Set())
