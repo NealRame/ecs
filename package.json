@@ -53,7 +53,7 @@
     "webpack-dev-server": "^4.11.1"
   },
   "dependencies": {
-    "@nealrame/ts-events": "^1.0.0",
+    "@nealrame/ts-events": "^1.0.1",
     "@nealrame/ts-injector": "^0.1.0"
   }
 }
