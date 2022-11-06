@@ -1,11 +1,12 @@
 import {
-    type ISystem,
+    type ISystemUpdateContext,
+    type IECS,
+    type Entity,
     Component,
     ComponentQueryHasAll,
     ComponentQueryHasOne,
     ECS,
-    Entity,
-    ISystemUpdateCallback,
+    System,
 } from "../lib"
 
 import "./style.css"
@@ -52,15 +53,14 @@ class Fruit extends Component {}
 class SnakeHead extends Component {}
 class SnakeTail extends Component {}
 
-class RenderSystem implements ISystem {
-    public ecs: ECS
-
+class RenderSystem extends System {
     public readonly accept = ComponentQueryHasAll(Color, Position)
 
     constructor(
         private context_: CanvasRenderingContext2D,
-    ) { }
-    public update(entities: Set<Entity>) {
+    ) { super() }
+
+    public update(entities: Set<Entity>, { ecs }: ISystemUpdateContext) {
         context.fillStyle = "#000"
         context.fillRect(0, 0, canvas.width, canvas.height)
 
@@ -68,8 +68,8 @@ class RenderSystem implements ISystem {
         context.scale(10, 10)
 
         for (const entity of entities) {
-            const position = this.ecs.getEntityComponent(entity, Position)
-            const color = this.ecs.getEntityComponent(entity, Color)
+            const position = ecs.getEntityComponent(entity, Position)
+            const color = ecs.getEntityComponent(entity, Color)
 
             context.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`
             context.fillRect(position.x, position.y, 1, 1)
@@ -79,24 +79,19 @@ class RenderSystem implements ISystem {
     }
 }
 
-class MoveSnakeSystem implements ISystem {
-    public ecs: ECS
-
+class MoveSnakeSystem extends System {
     public readonly accept = ComponentQueryHasAll(Position, Course)
-
-    private frame_ = 0
 
     public constructor(
         public speed: number,
-    ) { }
+    ) { super() }
 
-    public update(entities: Set<Entity>) {
-        this.frame_ = (this.frame_ + 1) % this.speed
-        if (this.frame_ === 0) {
+    public update(entities: Set<Entity>, { ecs }: ISystemUpdateContext) {
+        if ((ecs.frame%this.speed) === 0) {
             // update snake entities position
             for (const entity of entities) {
-                const position = this.ecs.getEntityComponent(entity, Position)
-                const course = this.ecs.getEntityComponent(entity, Course)
+                const position = ecs.getEntityComponent(entity, Position)
+                const course = ecs.getEntityComponent(entity, Course)
                 position.x += course.x
                 position.y += course.y
             }
@@ -104,7 +99,7 @@ class MoveSnakeSystem implements ISystem {
             // update snake entities course
             let prev_course: IVector | null = null
             for (const entity of entities) {
-                const current_course = this.ecs.getEntityComponent(entity, Course)
+                const current_course = ecs.getEntityComponent(entity, Course)
                 const { x, y } = current_course
 
                 if (prev_course !== null) {
@@ -118,9 +113,7 @@ class MoveSnakeSystem implements ISystem {
     }
 }
 
-class ControlSnakeSystem implements ISystem {
-    public ecs: ECS
-
+class ControlSnakeSystem extends System {
     public readonly accept = ComponentQueryHasAll(Course, Position)
 
     private course_: IVector | null = null
@@ -128,6 +121,7 @@ class ControlSnakeSystem implements ISystem {
     constructor(
         private context_: CanvasRenderingContext2D,
     ) {
+        super()
         window.addEventListener("keydown", (event) => {
             switch (event.key) {
             case "ArrowUp":
@@ -146,9 +140,9 @@ class ControlSnakeSystem implements ISystem {
         })
     }
 
-    private updateCourse_(head: Entity) {
+    private updateCourse_(head: Entity, ecs: IECS) {
         if (this.course_ !== null) {
-            const course = this.ecs.getEntityComponent(head, Course)
+            const course = ecs.getEntityComponent(head, Course)
             if (Vector.dot(this.course_, course) === 0) {
                 course.x = this.course_.x
                 course.y = this.course_.y
@@ -157,35 +151,33 @@ class ControlSnakeSystem implements ISystem {
         }
     }
 
-    private checkCollision_(head: Entity, tail: Array<Entity>) {
+    private checkCollision_(head: Entity, tail: Array<Entity>, ecs: IECS) {
         const { width, height } = this.context_.canvas
-        const { x, y } = this.ecs.getEntityComponent(head, Position)
+        const { x, y } = ecs.getEntityComponent(head, Position)
         // check collision with canvas border
         if (x < 0 || x >= width/10 || y < 0 || y >= height/10) {
             throw new Error("Snake is out of the canvas.")
         }
         // check collision with snake tail
         for (const entity of tail) {
-            const position = this.ecs.getEntityComponent(entity, Position)
+            const position = ecs.getEntityComponent(entity, Position)
             if (position.x === x && position.y === y) {
                 throw new Error("Snake is eating itself.")
             }
         }
     }
 
-    public update(entities: Set<Entity>) {
+    public update(entities: Set<Entity>, { ecs }: ISystemUpdateContext) {
         const [head, ...tail] = Array.from(entities)
-        this.updateCourse_(head)
-        this.checkCollision_(head, tail)
+        this.updateCourse_(head, ecs)
+        this.checkCollision_(head, tail, ecs)
     }
 }
 
-class ControlSnakeFruitSystem implements ISystem {
-    public ecs: ECS
-
+class ControlSnakeFruitSystem extends System {
     public readonly accept = ComponentQueryHasOne(SnakeHead, Fruit)
 
-    public update(entities: Set<Entity>) {
+    public update(entities: Set<Entity>, { ecs }: ISystemUpdateContext) {
         const [e1, e2] = Array.from(entities)
         const p1 = ecs.getEntityComponent(e1, Position)
         const p2 = ecs.getEntityComponent(e2, Position)
@@ -235,6 +227,10 @@ ecs.addSystem(new RenderSystem(context))
 
 createSnake(ecs, 10, 10, 5)
 createFruit(ecs, 20, 20)
+
+// ecs.events.on(ControlSnakeFruitSystem, "eaten", (fruit: Entity) => {
+//     ecs.removeEntity(fruit)
+// })
 
 ;(function loop() {
     try {

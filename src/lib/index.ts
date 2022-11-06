@@ -4,6 +4,10 @@ import {
     TConstructor,
 } from "@nealrame/ts-injector"
 
+import {
+    EventMap,
+} from "@nealrame/ts-events"
+
 export type Entity = number
 
 export abstract class Component {
@@ -32,15 +36,18 @@ export function ComponentQueryHasOne(
     return componentsContainer => componentsContainer.hasOne(componentTypes)
 }
 
-export type ISystemUpdateCallback = (entities: Set<Entity>) => void
-
-export interface ISystem {
+export interface ISystemUpdateContext<Events extends EventMap = {}> {
     ecs: IECS
-    readonly accept: ISystemAcceptCallback
-    readonly update: ISystemUpdateCallback
+}
+
+export abstract class System<Events extends EventMap = {}> {
+    abstract accept: ISystemAcceptCallback
+    abstract update(entities: Set<Entity>, context: ISystemUpdateContext<Events>): void
 }
 
 export interface IECS {
+    readonly frame: number
+
     hasEntity(entity: Entity): boolean
     addEntity(entity: Entity): Entity
     removeEntity(entity: Entity): IECS
@@ -48,8 +55,8 @@ export interface IECS {
     getEntityComponents(entity: Entity): IComponentContainer
     getEntityComponent<T extends Component>(entity: Entity, componentType: ComponentConstructor<T>): T
     removeEntityComponent(entity: Entity, componentType: Function): IECS
-    addSystem(system: ISystem): IECS
-    removeSystem(system: ISystem): IECS
+    addSystem(system: System): IECS
+    removeSystem(system: System): IECS
     update(): IECS
 }
 
@@ -128,10 +135,10 @@ function createComponentContainerView(
 
 export class ECS {
     private nextEntity_ = 0
+    private frame_ = 0
+
+    private systems_: Map<System, Set<Entity>>
     private entities_: Map<Entity, ComponentContainer>
-
-    private systems_: Map<ISystem, Set<Entity>>
-
     private postponedEntityDeletions_ = new Array<Entity>()
 
     private checkEntity_(entity: Entity) {
@@ -140,7 +147,7 @@ export class ECS {
         }
     }
 
-    private checkEntitySystem_(entity: Entity, system: ISystem) {
+    private checkEntitySystem_(entity: Entity, system: System) {
         const have = this.entities_.get(entity)
         if (have != null) {
             if (system.accept(have)) {
@@ -173,11 +180,22 @@ export class ECS {
         this.systems_ = new Map()
     }
 
+    public get frame(): number {
+        return this.frame_
+    }
+
     public update(): IECS {
-        for (const [system, entities] of this.systems_.entries()) {
-            system.update(entities)
+        const context = {
+            ecs: this,
         }
+
+        for (const [system, entities] of this.systems_.entries()) {
+            system.update(entities, context)
+        }
+
         this.removePostponedEntities_()
+        this.frame_ = this.frame_ + 1
+
         return this
     }
 
@@ -252,9 +270,9 @@ export class ECS {
      *************************************************************************/
 
     public addSystem(
-        system: ISystem
+        system: System
     ): IECS {
-        system.ecs = this
+
 
         this.systems_.set(system, new Set())
         for (const entity of this.entities_.keys()) {
@@ -265,7 +283,7 @@ export class ECS {
     }
 
     public removeSystem(
-        system: ISystem
+        system: System
     ): IECS {
         this.systems_.delete(system)
         return this
