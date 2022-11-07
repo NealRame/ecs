@@ -232,6 +232,10 @@ createFruit(ecs, 20, 20)
 //     ecs.removeEntity(fruit)
 // })
 
+const entity = ecs.addEntity()
+
+ecs.addEntityComponent(entity, Position)
+
 ;(function loop() {
     try {
         ecs.update()
