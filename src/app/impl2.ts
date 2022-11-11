@@ -1,4 +1,5 @@
 import {
+    Component,
     EntityFactory,
     ECS,
     BasicEntityFactory,
@@ -8,6 +9,13 @@ import {
     Container,
 } from "@nealrame/ts-injector"
 
+@Component()
+class Position {
+    constructor(
+        public x: number,
+        public y: number,
+    ) {}
+}
 
 (async function() {
     const container = new Container()
@@ -23,4 +31,6 @@ import {
     console.log(await ecs.createEntity())
 
     console.log(ecs.hasEntity(10))
+
+    ecs.addComponent(1, Position)
 })()
