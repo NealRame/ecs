@@ -1,41 +1,48 @@
-import * as DI from "@nealrame/ts-injector"
+import * as IOC from "@nealrame/ts-injector"
 
 type IEntity = number
 
 interface IECS {
     readonly frame: number
 
-    addEntity(): IEntity
+    createEntity(): Promise<IEntity>
+    createEntities(count: number): Promise<Array<IEntity>>
     hasEntity(entity: IEntity): boolean
 
     update(): IECS
 }
 
 interface IEntityFactory {
-    create(): IEntity
+    create(): Promise<IEntity>
+    bulkCreate(count: number): Promise<Array<IEntity>>
 }
 
 export function BasicEntityFactory(): IEntityFactory {
     let id = 0
     return {
-        create() {
+        async create() {
             return id++
+        },
+        async bulkCreate(count: number) {
+            const start = id
+            id = id + count
+            return Array.from({ length: count }, (_, i) => start + i)
         },
     }
 }
 
-export const EntityFactory: DI.Token<IEntityFactory> = Symbol("Entity factory")
+export const EntityFactory: IOC.Token<IEntityFactory> = Symbol("Entity factory")
 
-@DI.Service({
-    lifecycle: DI.ServiceLifecycle.Singleton,
+@IOC.Service({
+    lifecycle: IOC.ServiceLifecycle.Singleton,
 })
 export class ECS implements IECS {
     private entities_: Map<IEntity, []>
 
     constructor(
-        @DI.Inject(DI.Container)
-        private container_: DI.Container,
-        @DI.Inject(EntityFactory)
+        @IOC.Inject(IOC.Container)
+        private container_: IOC.Container,
+        @IOC.Inject(EntityFactory)
         private entityFactory_: IEntityFactory,
     ) {
         this.entities_ = new Map()
@@ -45,9 +52,18 @@ export class ECS implements IECS {
         return 0
     }
 
-    addEntity()
-        : IEntity {
-        return this.entityFactory_.create()
+    async createEntity() {
+        const entity = await this.entityFactory_.create()
+        this.entities_.set(entity, [])
+        return entity
+    }
+
+    async createEntities(count: number) {
+        const entities = await this.entityFactory_.bulkCreate(count)
+        for (const entity of entities) {
+            this.entities_.set(entity, [])
+        }
+        return entities
     }
 
     hasEntity(entity: IEntity)
