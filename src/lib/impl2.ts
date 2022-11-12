@@ -1,5 +1,4 @@
 import * as IOC from "@nealrame/ts-injector"
-import { TConstructor } from "@nealrame/ts-injector"
 
 export type IEntity = number
 
@@ -21,7 +20,7 @@ class ComponentContainer {
 
     public add<T>(component: IOC.TConstructor<T>): T {
         const componentInstance = this.container_.get(component)
-        this.components_.set(component, this.container_.get(component))
+        this.components_.set(component, componentInstance)
         return componentInstance
     }
 
@@ -52,6 +51,10 @@ class ComponentContainer {
     }
 }
 
+type MapTConstructor<T extends Array<unknown>> = {
+    [K in keyof T]: IOC.TConstructor<T[K]>
+}
+
 export interface IECS {
     readonly frame: number
 
@@ -61,8 +64,9 @@ export interface IECS {
     createEntities(count: number): Promise<Array<IEntity>>
     hasEntity(entity: IEntity): boolean
 
-    addComponent<T>(entity: IEntity, component: IOC.TConstructor<T>): T
-    getComponent<T>(entity: IEntity, component: IOC.TConstructor<T>): T
+    addComponent<T>(entity: IEntity, componentType: IOC.TConstructor<T>): T
+    getComponent<T>(entity: IEntity, componentType: IOC.TConstructor<T>): T
+    getComponents<T extends Array<unknown>>(entity: IEntity, ...components: MapTConstructor<T>): T
     hasComponent(entity: IEntity, component: IOC.TConstructor): boolean
     removeComponent(entity: IEntity, component: IOC.TConstructor): void
 }
@@ -142,7 +146,7 @@ export class ECS implements IECS {
     // Components management
     addComponent<T>(
         entity: IEntity,
-        componentType: TConstructor<T>,
+        componentType: IOC.TConstructor<T>,
     ): T {
         const components = this.entities_.get(entity)
         if (components == null) {
@@ -164,13 +168,24 @@ export class ECS implements IECS {
 
     getComponent<T>(
         entity: IEntity,
-        componentType: TConstructor<T>,
+        componentType: IOC.TConstructor<T>
     ): T {
-        const components = this.entities_.get(entity)
-        if (components == null) {
+        const componentsContainer = this.entities_.get(entity)
+        if (componentsContainer == null) {
             throw new Error(`Entity ${entity} does not exist`)
         }
-        return components.get(componentType)
+        return componentsContainer.get(componentType)
+    }
+
+    getComponents<T extends Array<unknown>>(
+        entity: IEntity,
+        ...componentsType: MapTConstructor<T>
+    ): T {
+        const componentsContainer = this.entities_.get(entity)
+        if (componentsContainer == null) {
+            throw new Error(`Entity ${entity} does not exist`)
+        }
+        return componentsType.map(componentsType => componentsContainer.get(componentsType)) as T
     }
 
     hasComponent(

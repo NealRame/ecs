@@ -17,6 +17,14 @@ class Position {
     ) {}
 }
 
+@Component()
+class Velocity {
+    constructor(
+        public x: number,
+        public y: number,
+    ) {}
+}
+
 (async function() {
     const container = new Container()
     container.set(EntityFactory, BasicEntityFactory())
@@ -32,5 +40,16 @@ class Position {
 
     console.log(ecs.hasEntity(10))
 
-    ecs.addComponent(1, Position)
+    const p = ecs.addComponent(1, Position)
+    p.x = 10
+    p.y = 20
+
+    const v = ecs.addComponent(1, Velocity)
+    v.x = 1
+    v.y = 1
+
+    const [position, velocity] = ecs.getComponents(1, Position, Velocity)
+
+    console.log(position)
+    console.log(velocity)
 })()
