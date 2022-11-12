@@ -40,15 +40,20 @@ class Velocity {
 
     console.log(ecs.hasEntity(10))
 
-    const p = ecs.addComponent(1, Position)
+    const components = ecs.getEntityComponents(10)
+
+    const p = components.add(Position)
     p.x = 10
     p.y = 20
 
-    const v = ecs.addComponent(1, Velocity)
+    const v = components.add(Velocity)
     v.x = 1
     v.y = 1
 
-    const [position, velocity] = ecs.getComponents(1, Position, Velocity)
+    console.log(components.hasAll([Position, Velocity]))
+    console.log(components.hasOne([Position, Velocity]))
+
+    const [position, velocity] = components.getAll([Position, Velocity])
 
     console.log(position)
     console.log(velocity)
