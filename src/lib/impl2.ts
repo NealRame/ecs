@@ -1,5 +1,12 @@
 import * as IOC from "@nealrame/ts-injector"
 
+import {
+    type EventMap,
+    type IEmitter,
+    type IReceiver,
+    useEvents,
+} from "@nealrame/ts-events"
+
 export type IEntity = number
 
 export interface IComponentContainer {
@@ -15,14 +22,31 @@ export interface IComponentContainer {
     hasOne(componentTypes: Iterable<IOC.TConstructor>): boolean
 }
 
+type ISystemEventEmitterReceiver<Events extends EventMap = Record<string, any>> = [
+    IEmitter<Events>,
+    IReceiver<Events>
+]
+
+export type ISystemAcceptCallback = (componentsContainer: IComponentContainer) => boolean
+
+export interface ISystemUpdateContext<Events extends EventMap = Record<string, any>> {
+    ecs: IECS
+    emitter: IEmitter<Events>
+}
+
+export abstract class System<Events extends EventMap = Record<string, any>> {
+    abstract accept: ISystemAcceptCallback
+    abstract update(entities: Set<IEntity>, context: ISystemUpdateContext<Events>): void
+}
+
 class ComponentContainer {
     // eslint-disable-next-line @typescript-eslint/ban-types
     private components_ = new Map<Function, unknown>()
 
     constructor(
         private entity_: IEntity,
-        private ecs_: ECS,
         private container_: IOC.Container,
+        private updateComponentsCallback_: () => void,
     ) {}
 
     public get<T>(componentType: IOC.TConstructor<T>): T {
@@ -42,11 +66,13 @@ class ComponentContainer {
     public add<T>(component: IOC.TConstructor<T>): T {
         const componentInstance = this.container_.get(component)
         this.components_.set(component, componentInstance)
+        this.updateComponentsCallback_()
         return componentInstance
     }
 
     public remove(componentType: IOC.TConstructor): void {
         this.components_.delete(componentType)
+        this.updateComponentsCallback_()
     }
 
     public has(componentType: IOC.TConstructor): boolean {
@@ -118,53 +144,122 @@ export function Component()
     lifecycle: IOC.ServiceLifecycle.Singleton,
 })
 export class ECS implements IECS {
-    private entities_: Map<IEntity, ComponentContainer>
+    private frame_ = 0
+    private entities_: Map<IEntity, ComponentContainer> = new Map()
+    private systems_: Map<System, [...ISystemEventEmitterReceiver, Set<IEntity>]> = new Map()
+
+    private checkEntity_(entity: IEntity) {
+        for (const system of this.systems_.keys()) {
+            this.checkEntitySystem_(entity, system)
+        }
+    }
+
+    private checkEntitySystem_(
+        entity: IEntity,
+        system: System,
+    ) {
+        const components = this.entities_.get(entity)
+        if (components != null) {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const [, , entities] = this.systems_.get(system)!
+            if (system.accept(components)) {
+                entities.add(entity)
+            } else {
+                entities.delete(entity)
+            }
+        }
+    }
 
     constructor(
         @IOC.Inject(IOC.Container)
         private container_: IOC.Container,
         @IOC.Inject(EntityFactory)
         private entityFactory_: IEntityFactory,
-    ) {
-        this.entities_ = new Map()
+    ) {}
+
+    public get frame() {
+        return this.frame_
     }
 
-    get frame() {
-        return 0
-    }
-
-    update()
+    public update()
         : IECS {
-        throw new Error("Method not implemented.")
+        for (const [system, [emitter, , entities]] of this.systems_.entries()) {
+            system.update(entities, {
+                ecs: this,
+                emitter,
+            })
+        }
+
+        // this.removePostponedEntities_()
+        this.frame_ = this.frame_ + 1
+
         return this
     }
 
     // Entity management
-    async createEntity() {
+    public async createEntity() {
         const entity = await this.entityFactory_.create()
-        this.entities_.set(entity, new ComponentContainer(entity, this, this.container_))
+        this.entities_.set(entity, new ComponentContainer(
+            entity,
+            this.container_,
+            () => this.checkEntity_(entity),
+        ))
         return entity
     }
 
-    async createEntities(count: number) {
+    public async createEntities(count: number) {
         const entities = await this.entityFactory_.bulkCreate(count)
         for (const entity of entities) {
-            this.entities_.set(entity, new ComponentContainer(entity, this, this.container_))
+            this.entities_.set(entity, new ComponentContainer(
+                entity,
+                this.container_,
+                () => this.checkEntity_(entity),
+            ))
         }
         return entities
     }
 
-    hasEntity(entity: IEntity)
+    public hasEntity(entity: IEntity)
         : boolean {
         return this.entities_.has(entity)
     }
 
-    getEntityComponents(entity: IEntity)
+    public getEntityComponents(entity: IEntity)
         : IComponentContainer {
         const components = this.entities_.get(entity)
         if (components == null) {
             throw new Error(`Entity ${entity} does not exist`)
         }
         return components
+    }
+
+    // System management
+    public addSystem(
+        system: System
+    ): IECS {
+        this.systems_.set(system, [...useEvents(), new Set<IEntity>()])
+        for (const entity of this.entities_.keys()) {
+            this.checkEntitySystem_(entity, system)
+        }
+        return this
+    }
+
+    public removeSystem(
+        system: System
+    ): IECS {
+        this.systems_.delete(system)
+        return this
+    }
+
+    public events<Events extends EventMap>(
+        system: System<Events>,
+    ): IReceiver<Events> {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        if (!this.systems_.has(system)) {
+            throw new Error("System is not registered")
+        }
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const [, receiver] = this.systems_.get(system)!
+        return receiver as IReceiver<Events>
     }
 }
