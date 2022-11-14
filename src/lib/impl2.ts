@@ -8,7 +8,6 @@ import {
     type IReceiver,
     useEvents,
 } from "@nealrame/ts-events"
-import { TConstructor } from "@nealrame/ts-injector"
 
 export type IEntity = number
 
@@ -169,7 +168,7 @@ export type SystemMetadata = {
 }
 
 export function System(metadata: Partial<SystemMetadata>) {
-    return (target: TConstructor<ISystem>) => {
+    return (target: IOC.TConstructor<ISystem>) => {
         IOC.Service()(target)
         Reflect.defineMetadata(SystemMetadataKey, {
             accept: ComponentNone,
@@ -275,7 +274,7 @@ export class ECS implements IECS {
 
     // System management
     public addSystem(
-        system: TConstructor<ISystem>
+        system: IOC.TConstructor<ISystem>
     ): IECS {
         const systemInstance = this.container_.get(system)
         this.systems_.set(systemInstance, [...useEvents(), new Set<IEntity>()])
