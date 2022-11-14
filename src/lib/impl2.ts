@@ -1,3 +1,5 @@
+import "reflect-metadata"
+
 import * as IOC from "@nealrame/ts-injector"
 
 import {
@@ -6,6 +8,7 @@ import {
     type IReceiver,
     useEvents,
 } from "@nealrame/ts-events"
+import { TConstructor } from "@nealrame/ts-injector"
 
 export type IEntity = number
 
@@ -13,7 +16,7 @@ export interface IComponentContainer {
     add<T>(componentType: IOC.TConstructor<T>): T
 
     get<T>(componentType: IOC.TConstructor<T>): T
-    getAll<T extends Array<unknown>>(componentsType: MapTConstructor<T>): T
+    getAll<T extends Array<unknown>>(...componentsType: MapTConstructor<T>): T
 
     remove(componentType: IOC.TConstructor): void
 
@@ -29,14 +32,33 @@ type ISystemEventEmitterReceiver<Events extends EventMap = Record<string, any>> 
 
 export type ISystemAcceptCallback = (componentsContainer: IComponentContainer) => boolean
 
+export function ComponentAll(): boolean {
+    return true
+}
+
+export function ComponentNone(): boolean {
+    return false
+}
+
+export function ComponentQueryHasAll(
+    ...componentTypes: Array<IOC.TConstructor>
+): ISystemAcceptCallback {
+    return componentsContainer => componentsContainer.hasAll(componentTypes)
+}
+
+export function ComponentQueryHasOne(
+    ...componentTypes: Array<IOC.TConstructor>
+): ISystemAcceptCallback {
+    return componentsContainer => componentsContainer.hasOne(componentTypes)
+}
+
 export interface ISystemUpdateContext<Events extends EventMap = Record<string, any>> {
     ecs: IECS
     emitter: IEmitter<Events>
 }
 
-export abstract class System<Events extends EventMap = Record<string, any>> {
-    abstract accept: ISystemAcceptCallback
-    abstract update(entities: Set<IEntity>, context: ISystemUpdateContext<Events>): void
+export interface ISystem<Events extends EventMap = Record<string, any>> {
+    update(entities: Set<IEntity>, context: ISystemUpdateContext<Events>): void
 }
 
 class ComponentContainer {
@@ -58,7 +80,7 @@ class ComponentContainer {
     }
 
     public getAll<T extends Array<unknown>>(
-        componentsType: MapTConstructor<T>
+        ...componentsType: MapTConstructor<T>
     ): T {
         return componentsType.map(componentsType => this.get(componentsType)) as T
     }
@@ -140,13 +162,30 @@ export function Component()
     return IOC.Service()
 }
 
+export const SystemMetadataKey = Symbol("System")
+
+export type SystemMetadata = {
+    accept: ISystemAcceptCallback
+}
+
+export function System(metadata: Partial<SystemMetadata>) {
+    return (target: TConstructor<ISystem>) => {
+        IOC.Service()(target)
+        Reflect.defineMetadata(SystemMetadataKey, {
+            accept: ComponentNone,
+            ...metadata,
+        }, target)
+    }
+}
+
+
 @IOC.Service({
     lifecycle: IOC.ServiceLifecycle.Singleton,
 })
 export class ECS implements IECS {
     private frame_ = 0
     private entities_: Map<IEntity, ComponentContainer> = new Map()
-    private systems_: Map<System, [...ISystemEventEmitterReceiver, Set<IEntity>]> = new Map()
+    private systems_: Map<ISystem, [...ISystemEventEmitterReceiver, Set<IEntity>]> = new Map()
 
     private checkEntity_(entity: IEntity) {
         for (const system of this.systems_.keys()) {
@@ -156,13 +195,14 @@ export class ECS implements IECS {
 
     private checkEntitySystem_(
         entity: IEntity,
-        system: System,
+        system: ISystem,
     ) {
         const components = this.entities_.get(entity)
         if (components != null) {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const [, , entities] = this.systems_.get(system)!
-            if (system.accept(components)) {
+            const { accept } = Reflect.getMetadata(SystemMetadataKey, system.constructor)
+            if (accept(components)) {
                 entities.add(entity)
             } else {
                 entities.delete(entity)
@@ -235,24 +275,25 @@ export class ECS implements IECS {
 
     // System management
     public addSystem(
-        system: System
+        system: TConstructor<ISystem>
     ): IECS {
-        this.systems_.set(system, [...useEvents(), new Set<IEntity>()])
+        const systemInstance = this.container_.get(system)
+        this.systems_.set(systemInstance, [...useEvents(), new Set<IEntity>()])
         for (const entity of this.entities_.keys()) {
-            this.checkEntitySystem_(entity, system)
+            this.checkEntitySystem_(entity, systemInstance)
         }
         return this
     }
 
     public removeSystem(
-        system: System
+        system: ISystem
     ): IECS {
         this.systems_.delete(system)
         return this
     }
 
     public events<Events extends EventMap>(
-        system: System<Events>,
+        system: ISystem<Events>,
     ): IReceiver<Events> {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         if (!this.systems_.has(system)) {
