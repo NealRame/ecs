@@ -39,6 +39,18 @@ export function ComponentNone(): boolean {
     return false
 }
 
+export function ComponentAnd(
+    ...fns: Array<ISystemAcceptCallback>
+): ISystemAcceptCallback {
+    return componentsContainer => fns.every(fn => fn(componentsContainer))
+}
+
+export function ComponentOr(
+    ...fns: Array<ISystemAcceptCallback>
+): ISystemAcceptCallback {
+    return componentsContainer => fns.some(fn => fn(componentsContainer))
+}
+
 export function ComponentQueryHasAll(
     ...componentTypes: Array<IOC.TConstructor>
 ): ISystemAcceptCallback {
@@ -132,6 +144,9 @@ export interface IECS {
     createEntities(count: number): Promise<Array<IEntity>>
     hasEntity(entity: IEntity): boolean
     getEntityComponents(entity: IEntity): IComponentContainer
+
+    addSystem(system: ISystem): IECS
+    removeSystem(system: ISystem): IECS
 }
 
 interface IEntityFactory {
@@ -274,12 +289,11 @@ export class ECS implements IECS {
 
     // System management
     public addSystem(
-        system: IOC.TConstructor<ISystem>
+        system: ISystem
     ): IECS {
-        const systemInstance = this.container_.get(system)
-        this.systems_.set(systemInstance, [...useEvents(), new Set<IEntity>()])
+        this.systems_.set(system, [...useEvents(), new Set<IEntity>()])
         for (const entity of this.entities_.keys()) {
-            this.checkEntitySystem_(entity, systemInstance)
+            this.checkEntitySystem_(entity, system)
         }
         return this
     }
