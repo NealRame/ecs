@@ -72,30 +72,6 @@ class Vector {
         return this
     }
 
-    mul(s: number): Vector {
-        this.v_.x *= s
-        this.v_.y *= s
-        return this
-    }
-
-    div(s: number): Vector {
-        this.v_.x /= s
-        this.v_.y /= s
-        return this
-    }
-
-    normalize(): Vector {
-        const l = Math.sqrt(Vector.dot(this.v_, this.v_))
-        if (l > 0) {
-            this.div(l)
-        }
-        return this
-    }
-
-    static norm(u: IVector): number {
-        return Math.sqrt(Vector.dot(u, u))
-    }
-
     static dot(u: IVector, v: IVector): number {
         return u.x*v.x + u.y*v.y
     }
