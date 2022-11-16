@@ -29,37 +29,95 @@ type ISystemEventEmitterReceiver<Events extends EventMap = Record<string, any>> 
     IReceiver<Events>
 ]
 
-export type ISystemAcceptCallback = (componentsContainer: IComponentContainer) => boolean
+export type IEntityQueryPredicate = (componentsContainer: IComponentContainer) => boolean
 
-export function ComponentAll(): boolean {
+export interface IEntityQuerySet {
+    [Symbol.iterator](): Iterator<IEntity>
+
+    find(pred: IEntityQueryPredicate): IEntity | undefined
+    filter(pred: IEntityQueryPredicate): Set<IEntity>
+    partition(pred: IEntityQueryPredicate): [Set<IEntity>, Set<IEntity>]
+}
+
+class EntityQuerySet {
+    constructor(
+        private ecs_: IECS,
+        private entities_: Iterable<IEntity>,
+    ) { }
+
+    *[Symbol.iterator]() {
+        for (const entity of this.entities_) {
+            yield entity
+        }
+    }
+
+    find(
+        pred: IEntityQueryPredicate
+    ): IEntity | undefined {
+        for (const entity of this.entities_) {
+            if (pred(this.ecs_.getEntityComponents(entity))) {
+                return entity
+            }
+        }
+    }
+
+    filter(
+        pred: IEntityQueryPredicate
+    ): Set<IEntity> {
+        const filtered = new Set<IEntity>()
+        for (const entity of this.entities_) {
+            if (pred(this.ecs_.getEntityComponents(entity))) {
+                filtered.add(entity)
+            }
+        }
+        return filtered
+    }
+
+    partition(
+        pred: IEntityQueryPredicate
+    ): [Set<IEntity>, Set<IEntity>] {
+        const [filtered, rejected] = [new Set<IEntity>(), new Set<IEntity>()]
+        for (const entity of this.entities_) {
+            if (pred(this.ecs_.getEntityComponents(entity))) {
+                filtered.add(entity)
+            } else {
+                rejected.add(entity)
+            }
+        }
+        return [filtered, rejected]
+    }
+}
+
+
+export function QueryAll(): boolean {
     return true
 }
 
-export function ComponentNone(): boolean {
+export function QueryNone(): boolean {
     return false
 }
 
-export function ComponentAnd(
-    ...fns: Array<ISystemAcceptCallback>
-): ISystemAcceptCallback {
-    return componentsContainer => fns.every(fn => fn(componentsContainer))
+export function QueryAnd(
+    ...predicates: Array<IEntityQueryPredicate>
+): IEntityQueryPredicate {
+    return componentsContainer => predicates.every(pred => pred(componentsContainer))
 }
 
-export function ComponentOr(
-    ...fns: Array<ISystemAcceptCallback>
-): ISystemAcceptCallback {
-    return componentsContainer => fns.some(fn => fn(componentsContainer))
+export function QueryOr(
+    ...predicates: Array<IEntityQueryPredicate>
+): IEntityQueryPredicate {
+    return componentsContainer => predicates.some(pred => pred(componentsContainer))
 }
 
-export function ComponentQueryHasAll(
+export function QueryHasAll(
     ...componentTypes: Array<IOC.TConstructor>
-): ISystemAcceptCallback {
+): IEntityQueryPredicate {
     return componentsContainer => componentsContainer.hasAll(componentTypes)
 }
 
-export function ComponentQueryHasOne(
+export function QueryHasOne(
     ...componentTypes: Array<IOC.TConstructor>
-): ISystemAcceptCallback {
+): IEntityQueryPredicate {
     return componentsContainer => componentsContainer.hasOne(componentTypes)
 }
 
@@ -147,6 +205,8 @@ export interface IECS {
 
     addSystem(system: ISystem): IECS
     removeSystem(system: ISystem): IECS
+
+    query(system?: ISystem): IEntityQuerySet
 }
 
 interface IEntityFactory {
@@ -179,14 +239,14 @@ export function Component()
 export const SystemMetadataKey = Symbol("System")
 
 export type SystemMetadata = {
-    accept: ISystemAcceptCallback
+    predicate: IEntityQueryPredicate
 }
 
 export function System(metadata: Partial<SystemMetadata>) {
     return (target: IOC.TConstructor<ISystem>) => {
         IOC.Service()(target)
         Reflect.defineMetadata(SystemMetadataKey, {
-            accept: ComponentNone,
+            predicate: QueryNone,
             ...metadata,
         }, target)
     }
@@ -215,8 +275,8 @@ export class ECS implements IECS {
         if (components != null) {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const [, , entities] = this.systems_.get(system)!
-            const { accept } = Reflect.getMetadata(SystemMetadataKey, system.constructor)
-            if (accept(components)) {
+            const { predicate } = Reflect.getMetadata(SystemMetadataKey, system.constructor)
+            if (predicate(components)) {
                 entities.add(entity)
             } else {
                 entities.delete(entity)
@@ -303,6 +363,17 @@ export class ECS implements IECS {
     ): IECS {
         this.systems_.delete(system)
         return this
+    }
+
+    public query(
+        system?: ISystem
+    ): IEntityQuerySet {
+        return new EntityQuerySet(
+            this,
+            system == null
+                ? this.entities_.keys()
+                : this.systems_.get(system)?.[2] ?? [] as Iterable<IEntity>
+        )
     }
 
     public events<Events extends EventMap>(
