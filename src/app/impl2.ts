@@ -389,10 +389,10 @@ screen.height = HEIGHT*PIXEL_SIZE
 
         if (old_tail != null) {
             const old_tail_components = ecs.getEntityComponents(old_tail)
-            const [old_tail_position, old_tail_course] = old_tail_components.getAll(Position, Course)
 
             old_tail_components.remove(SnakeTail)
 
+            const [old_tail_position, old_tail_course] = old_tail_components.getAll(Position, Course)
             const new_tail_position = { x: 0, y: 0 }
 
             Vector.wrap(new_tail_position).set(old_tail_position).sub(old_tail_course)
