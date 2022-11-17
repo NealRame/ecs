@@ -7,7 +7,6 @@ import {
 import {
     type IECS,
     type IEntity,
-    type ISystemUpdateContext,
     BasicEntityFactory,
     Component,
     SystemBase,
