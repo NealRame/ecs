@@ -9,35 +9,14 @@ import {
     useEvents,
 } from "@nealrame/ts-events"
 
-export type IEntity = number
-
-export interface IComponentContainer {
-    add<T>(componentType: IOC.TConstructor<T>): T
-
-    get<T>(componentType: IOC.TConstructor<T>): T
-    getAll<T extends Array<unknown>>(...componentsType: MapTConstructor<T>): T
-
-    remove(componentType: IOC.TConstructor): void
-
-    has(componentType: IOC.TConstructor): boolean
-    hasAll(componentTypes: Iterable<IOC.TConstructor>): boolean
-    hasOne(componentTypes: Iterable<IOC.TConstructor>): boolean
-}
-
-export type ISystemEventEmitterReceiver<Events extends EventMap = Record<string, any>> = [
-    IEmitter<Events>,
-    IReceiver<Events>
-]
-
-export type IEntityQueryPredicate = (componentsContainer: IComponentContainer) => boolean
-
-export interface IEntityQuerySet {
-    [Symbol.iterator](): Iterator<IEntity>
-
-    find(pred: IEntityQueryPredicate): IEntity | undefined
-    filter(pred: IEntityQueryPredicate): Set<IEntity>
-    partition(pred: IEntityQueryPredicate): [Set<IEntity>, Set<IEntity>]
-}
+import type {
+    IEntity,
+    IEntityFactory,
+    IComponentContainer,
+    IEntityQueryPredicate,
+    IEntityQuerySet,
+    MapTConstructor,
+} from "./types"
 
 class EntityQuerySet {
     constructor(
@@ -121,10 +100,6 @@ export function QueryHasOne(
     return componentsContainer => componentsContainer.hasOne(componentTypes)
 }
 
-export interface ISystemUpdateContext<Events extends EventMap = Record<string, any>> {
-    ecs: IECS
-}
-
 export abstract class SystemBase<Events extends EventMap = Record<string, any>> {
     constructor() {
         [this.emitter, this.events] = useEvents<Events>()
@@ -195,10 +170,6 @@ class ComponentContainer {
     }
 }
 
-type MapTConstructor<T extends Array<unknown>> = {
-    [K in keyof T]: IOC.TConstructor<T[K]>
-}
-
 export interface IECS {
     readonly frame: number
 
@@ -213,11 +184,6 @@ export interface IECS {
     removeSystem(system: SystemBase): IECS
 
     query(system?: SystemBase): IEntityQuerySet
-}
-
-interface IEntityFactory {
-    create(): Promise<IEntity>
-    bulkCreate(count: number): Promise<Array<IEntity>>
 }
 
 export function BasicEntityFactory(): IEntityFactory {
@@ -382,3 +348,5 @@ export class ECS implements IECS {
         )
     }
 }
+
+export * from "./types"
