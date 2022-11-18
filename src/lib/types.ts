@@ -2,6 +2,12 @@ import type {
     TConstructor,
 } from "@nealrame/ts-injector"
 
+import type {
+    IEmitter,
+    IReceiver,
+    EventMap,
+} from "@nealrame/ts-events"
+
 export type MapTConstructor<T extends Array<unknown>> = {
     [K in keyof T]: TConstructor<T[K]>
 }
@@ -36,3 +42,24 @@ export interface IEntityQuerySet {
     partition(pred: IEntityQueryPredicate): [Set<IEntity>, Set<IEntity>]
 }
 
+export interface ISystem<Events extends EventMap = Record<string, any>> {
+    readonly emitter: IEmitter<Events>
+    readonly events: IReceiver<Events>
+    update(entities: Set<IEntity>, ecs: IECS): void
+}
+
+export interface IECS {
+    readonly frame: number
+
+    update(): IECS
+
+    createEntity(): Promise<IEntity>
+    createEntities(count: number): Promise<Array<IEntity>>
+    hasEntity(entity: IEntity): boolean
+    getEntityComponents(entity: IEntity): IComponentContainer
+
+    addSystem(system: ISystem): IECS
+    removeSystem(system: ISystem): IECS
+
+    query(system?: ISystem): IEntityQuerySet
+}
