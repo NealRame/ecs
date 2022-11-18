@@ -42,6 +42,7 @@ export interface IEntityQuerySet {
     partition(pred: IEntityQueryPredicate): [Set<IEntity>, Set<IEntity>]
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ISystem<Events extends EventMap = Record<string, any>> {
     readonly emitter: IEmitter<Events>
     readonly events: IReceiver<Events>
