@@ -11,7 +11,10 @@ import {
     useEvents,
 } from "@nealrame/ts-events"
 
-export abstract class SystemBase<Events extends EventMap = Record<string, any>> implements ISystem<Events> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export abstract class SystemBase<Events extends EventMap = Record<string, any>>
+    implements ISystem<Events>
+{
     constructor() {
         [this.emitter, this.events] = useEvents<Events>()
     }
