@@ -1,15 +1,29 @@
 import {
-    type ISystemUpdateContext,
+    type Token,
+    Container,
+    Inject,
+} from "@nealrame/ts-injector"
+
+import {
     type IECS,
-    type Entity,
+    type IEntity,
+    BasicEntityFactory,
     Component,
-    ComponentQueryHasAll,
-    ComponentQueryHasOne,
+    SystemBase,
     ECS,
+    EntityFactory,
+    QueryHasAll,
+    QueryHasOne,
+    QueryAnd,
     System,
 } from "../lib"
 
 import "./style.css"
+
+const Screen: Token<HTMLCanvasElement> = Symbol("Screen")
+const ScreenPixelResolution: Token<number> = Symbol("Pixel resolution")
+
+const SnakeSpeed: Token<number> = Symbol("Snake speed")
 
 interface IVector {
     x: number
@@ -17,94 +31,128 @@ interface IVector {
 }
 
 class Vector {
-    public static dot(u: IVector, v: IVector): number {
+    constructor(private v_: IVector) {}
+
+    get y(): number {
+        return this.v_.y
+    }
+
+    set(v: IVector): Vector {
+        this.v_.x = v.x
+        this.v_.y = v.y
+        return this
+    }
+
+    add(u: IVector): Vector {
+        this.v_.x += u.x
+        this.v_.y += u.y
+        return this
+    }
+
+    sub(u: IVector): Vector {
+        this.v_.x -= u.x
+        this.v_.y -= u.y
+        return this
+    }
+
+    static dot(u: IVector, v: IVector): number {
         return u.x*v.x + u.y*v.y
     }
+
+    static wrap(v: IVector): Vector {
+        return new Vector(v)
+    }
+
+    public static north = () => ({ x:  0, y: -1 })
+    public static south = () => ({ x:  0, y:  1 })
+    public static east  = () => ({ x:  1, y:  0 })
+    public static west  = () => ({ x: -1, y:  0 })
 }
 
-class Color extends Component {
-    public constructor(
-        public r: number,
-        public g: number,
-        public b: number,
-    ) { super() }
-}
-
-class Course extends Component implements IVector {
+@Component()
+class Position implements IVector {
     constructor(
         public x: number,
         public y: number,
-    ) { super() }
-
-    public static North = () => new Course( 0, -1)
-    public static South = () => new Course( 0,  1)
-    public static East  = () => new Course( 1,  0)
-    public static West  = () => new Course(-1,  0)
+    ) {}
 }
 
-class Position extends Component implements IVector {
+@Component()
+class Course implements IVector {
     constructor(
         public x: number,
         public y: number,
-    ) { super() }
+    ) {}
 }
 
-class Fruit extends Component {}
-class SnakeHead extends Component {}
-class SnakeTail extends Component {}
+@Component() class Fruit {}
+@Component() class SnakeHead {}
+@Component() class SnakeTail {}
 
-class RenderSystem extends System {
-    public readonly accept = ComponentQueryHasAll(Color, Position)
+@System({
+    predicate: QueryHasAll(Position),
+})
+class RenderSystem extends SystemBase {
+    private context_: CanvasRenderingContext2D
 
     constructor(
-        private context_: CanvasRenderingContext2D,
-    ) { super() }
+        @Inject(Screen) private screen_: HTMLCanvasElement,
+        @Inject(ScreenPixelResolution) private pixelResolution_: number,
+    ) {
+        super()
+        this.context_ = screen_.getContext("2d")
+    }
 
-    public update(entities: Set<Entity>, { ecs }: ISystemUpdateContext) {
-        context.fillStyle = "#000"
-        context.fillRect(0, 0, canvas.width, canvas.height)
+    public async update(entities: Set<IEntity>, ecs: IECS) {
+        this.context_.fillStyle = "#000"
+        this.context_.fillRect(0, 0, this.screen_.width, this.screen_.height)
 
-        context.save()
-        context.scale(10, 10)
+        this.context_.save()
+        this.context_.scale(this.pixelResolution_, this.pixelResolution_)
 
         for (const entity of entities) {
-            const position = ecs.getEntityComponent(entity, Position)
-            const color = ecs.getEntityComponent(entity, Color)
+            const components = ecs.getEntityComponents(entity)
+            const position = components.get(Position)
 
-            context.fillStyle = `rgb(${color.r}, ${color.g}, ${color.b})`
-            context.fillRect(position.x, position.y, 1, 1)
+            if (components.has(Fruit)) {
+                this.context_.fillStyle = `red`
+            } else if (components.has(SnakeHead)) {
+                this.context_.fillStyle = `blue`
+            } else {
+                this.context_.fillStyle = `green`
+            }
+            this.context_.fillRect(position.x, position.y, 1, 1)
         }
 
-        context.restore()
+        this.context_.restore()
     }
 }
 
-class MoveSnakeSystem extends System {
-    public readonly accept = ComponentQueryHasAll(Position, Course)
-
+@System({
+    predicate: QueryHasAll(Position, Course),
+})
+class MoveSnakeSystem extends SystemBase {
     public constructor(
-        public speed: number,
+        @Inject(SnakeSpeed) private speed_: number,
     ) { super() }
 
-    public update(entities: Set<Entity>, { ecs }: ISystemUpdateContext) {
-        if ((ecs.frame%this.speed) === 0) {
+    public update(entities: Set<IEntity>, ecs: IECS) {
+        if ((ecs.frame%this.speed_) === 0) {
             // update snake entities position
             for (const entity of entities) {
-                const position = ecs.getEntityComponent(entity, Position)
-                const course = ecs.getEntityComponent(entity, Course)
-                position.x += course.x
-                position.y += course.y
+                const [position, course] = ecs.getEntityComponents(entity).getAll(Position, Course)
+
+                Vector.wrap(position).add(course)
             }
 
             // update snake entities course
             let prev_course: IVector | null = null
             for (const entity of entities) {
-                const current_course = ecs.getEntityComponent(entity, Course)
-                const { x, y } = current_course
+                const course = ecs.getEntityComponents(entity).get(Course)
+                const { x, y } = course
 
                 if (prev_course !== null) {
-                    current_course.x = prev_course.x
-                    current_course.y = prev_course.y
+                    Vector.wrap(course).set(prev_course)
                 }
 
                 prev_course = { x, y }
@@ -113,13 +161,20 @@ class MoveSnakeSystem extends System {
     }
 }
 
-class ControlSnakeSystem extends System {
-    public readonly accept = ComponentQueryHasAll(Course, Position)
+type SnakeControlerEvents = {
+    tailCollision: void,
+    wallCollision: void,
+}
 
+@System({
+    predicate: QueryHasAll(Position, Course),
+})
+class SnakeControlerSystem extends SystemBase<SnakeControlerEvents> {
     private course_: IVector | null = null
 
     constructor(
-        private context_: CanvasRenderingContext2D,
+        @Inject(Screen) private screen_: HTMLCanvasElement,
+        @Inject(ScreenPixelResolution) private pixelResolution_: number,
     ) {
         super()
         window.addEventListener("keydown", (event) => {
@@ -140,9 +195,9 @@ class ControlSnakeSystem extends System {
         })
     }
 
-    private updateCourse_(head: Entity, ecs: IECS) {
-        if (this.course_ !== null) {
-            const course = ecs.getEntityComponent(head, Course)
+    private updateCourse_(head: IEntity, ecs: IECS) {
+        if (this.course_ != null && head != null) {
+            const course = ecs.getEntityComponents(head).get(Course)
             if (Vector.dot(this.course_, course) === 0) {
                 course.x = this.course_.x
                 course.y = this.course_.y
@@ -151,92 +206,160 @@ class ControlSnakeSystem extends System {
         }
     }
 
-    private checkCollision_(head: Entity, tail: Array<Entity>, ecs: IECS) {
-        const { width, height } = this.context_.canvas
-        const { x, y } = ecs.getEntityComponent(head, Position)
-        // check collision with canvas border
-        if (x < 0 || x >= width/10 || y < 0 || y >= height/10) {
-            throw new Error("Snake is out of the canvas.")
-        }
-        // check collision with snake tail
-        for (const entity of tail) {
-            const position = ecs.getEntityComponent(entity, Position)
-            if (position.x === x && position.y === y) {
-                throw new Error("Snake is eating itself.")
+    private checkCollision_(
+        head: IEntity,
+        tail: Array<IEntity>,
+        ecs: IECS,
+    ) {
+        if (head != null) {
+            const { width, height } = this.screen_
+            const { x, y } = ecs.getEntityComponents(head).get(Position)
+
+            // check collision with canvas border
+            if (x < 0
+                || y < 0
+                || x >= width/this.pixelResolution_
+                || y >= height/this.pixelResolution_) {
+                this.emitter.emit("wallCollision")
+                return
+            }
+
+            // check collision with snake tail
+            for (const entity of tail) {
+                const position = ecs.getEntityComponents(entity).get(Position)
+                if (position.x === x && position.y === y) {
+                    this.emitter.emit("tailCollision")
+                    return
+                }
             }
         }
     }
 
-    public update(entities: Set<Entity>, { ecs }: ISystemUpdateContext) {
+    public update(entities: Set<IEntity>, ecs: IECS) {
         const [head, ...tail] = Array.from(entities)
         this.updateCourse_(head, ecs)
         this.checkCollision_(head, tail, ecs)
     }
 }
 
-class ControlSnakeFruitSystem extends System {
-    public readonly accept = ComponentQueryHasOne(SnakeHead, Fruit)
+type FruitControlerEvents = {
+    fruitEaten: IEntity,
+}
 
-    public update(entities: Set<Entity>, { ecs }: ISystemUpdateContext) {
-        const [e1, e2] = Array.from(entities)
-        const p1 = ecs.getEntityComponent(e1, Position)
-        const p2 = ecs.getEntityComponent(e2, Position)
-        if (p1.x === p2.x && p1.y === p2.y) {
-            console.log("Snake eat a fruit.")
+@System({
+    predicate: QueryAnd(
+        QueryHasAll(Position),
+        QueryHasOne(Fruit, SnakeHead),
+    )
+})
+class FruitControlerSystem extends SystemBase<FruitControlerEvents> {
+    public update(entities: Set<IEntity>, ecs: IECS) {
+        const a = Array.from(entities)
+        if (a.length === 2) {
+            const [p1, p2] = a.map(entity => ecs.getEntityComponents(entity).get(Position))
+            if (p1.x === p2.x && p1.y === p2.y) {
+                const fruit = a.find(entity => ecs.getEntityComponents(entity).has(Fruit))
+                ecs.getEntityComponents(fruit).remove(Position)
+                this.emitter.emit("fruitEaten", fruit)
+            }
         }
     }
 }
 
-function createFruit(ecs: ECS, x: number, y: number) {
-    const entity = ecs.addEntity()
 
-    ecs.addEntityComponent(entity, new Position(x, y))
-    ecs.addEntityComponent(entity, new Color(255, 0, 0))
-    ecs.addEntityComponent(entity, new Fruit())
+async function createSnake(
+    ecs: ECS,
+    length: number,
+    pos: IVector,
+    course: IVector = Vector.north(),
+) {
+    const entities = await ecs.createEntities(length)
+    entities.forEach((entity, i) => {
+        const components = ecs.getEntityComponents(entity)
+
+        Vector.wrap(components.add(Position)).set(pos)
+        Vector.wrap(components.add(Course)).set(course)
+        Vector.wrap(pos).sub(course)
+
+        if (i === 0 && length > 1) {
+            components.add(SnakeHead)
+        } else if (i === length - 1) {
+            components.add(SnakeTail)
+        }
+    })
 }
 
-function createSnake(ecs: ECS, x: number, y: number, length: number) {
-    for (let i = 0; i < length; i++) {
-        const entity = ecs.addEntity()
+async function createFruit(ecs: ECS, x: number, y: number) {
+    const entity = await ecs.createEntity()
+    const components = ecs.getEntityComponents(entity)
 
-        ecs.addEntityComponent(entity, i > 0
-            ? new SnakeTail()
-            : new SnakeHead()
-        )
-        ecs.addEntityComponent(entity, Course.North())
-        ecs.addEntityComponent(entity, new Position(x, y + i))
-        ecs.addEntityComponent(entity, new Color(255, 255, 255))
-    }
+    components.add(Fruit)
+
+    Vector.wrap(components.add(Position)).set({ x, y })
 }
 
-const canvas = document.getElementById("screen") as HTMLCanvasElement
+const WIDTH = 84
+const HEIGHT = 48
+const PIXEL_SIZE = 5
 
-const width = window.innerWidth
-const height = window.innerHeight
+const screen = document.getElementById("screen") as HTMLCanvasElement
 
-canvas.width = width
-canvas.height = height
+screen.width = WIDTH*PIXEL_SIZE
+screen.height = HEIGHT*PIXEL_SIZE
 
-const context = canvas.getContext("2d")
-const ecs = new ECS()
+;(async function() {
+    const container = new Container()
 
-ecs.addSystem(new ControlSnakeSystem(context))
-ecs.addSystem(new ControlSnakeFruitSystem())
-ecs.addSystem(new MoveSnakeSystem(20))
-ecs.addSystem(new RenderSystem(context))
+    container.set(EntityFactory, BasicEntityFactory())
+    container.set(Screen, screen)
+    container.set(ScreenPixelResolution, PIXEL_SIZE)
+    container.set(SnakeSpeed, PIXEL_SIZE)
 
-createSnake(ecs, 10, 10, 5)
-createFruit(ecs, 20, 20)
+    const ecs = container.get(ECS)
 
-// ecs.events.on(ControlSnakeFruitSystem, "eaten", (fruit: Entity) => {
-//     ecs.removeEntity(fruit)
-// })
+    const snakeControler = container.get(SnakeControlerSystem)
+    const fruitControler = container.get(FruitControlerSystem)
 
-;(function loop() {
-    try {
+    ecs
+        .addSystem(fruitControler)
+        .addSystem(snakeControler)
+        .addSystem(container.get(RenderSystem))
+        .addSystem(container.get(MoveSnakeSystem))
+
+    createSnake(ecs, 5, { x: 10, y: 10 },)
+    createFruit(ecs, 20, 20)
+
+    let gameOver = false
+
+    fruitControler.events.on("fruitEaten", async entity => {
+        const old_tail = ecs.query().find(QueryHasAll(SnakeTail))
+
+        if (old_tail != null) {
+            const old_tail_components = ecs.getEntityComponents(old_tail)
+
+            old_tail_components.remove(SnakeTail)
+
+            const [old_tail_position, old_tail_course] = old_tail_components.getAll(Position, Course)
+            const new_tail_position = { x: 0, y: 0 }
+
+            Vector.wrap(new_tail_position).set(old_tail_position).sub(old_tail_course)
+
+            await createSnake(ecs, 1, new_tail_position, old_tail_course)
+
+            Vector.wrap(ecs.getEntityComponents(entity).add(Position)).set({
+                x: Math.floor(Math.random()*WIDTH),
+                y: Math.floor(Math.random()*HEIGHT),
+            })
+        }
+    })
+
+    snakeControler.events.once("tailCollision", () => { gameOver = true })
+    snakeControler.events.once("wallCollision", () => { gameOver = true })
+
+    ;(function loop() {
         ecs.update()
-        requestAnimationFrame(loop)
-    } catch (e) {
-        console.log("Game over!", e.message)
-    }
+        if (!gameOver) {
+            requestAnimationFrame(loop)
+        }
+    })()
 })()

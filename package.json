@@ -54,6 +54,6 @@
   },
   "dependencies": {
     "@nealrame/ts-events": "^1.0.1",
-    "@nealrame/ts-injector": "^0.1.0"
+    "@nealrame/ts-injector": "^0.2.0"
   }
 }
