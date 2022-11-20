@@ -16,7 +16,7 @@ import {
 } from "./query"
 
 import type {
-    IEntity,
+    TEntity,
     IEntityFactory,
     IComponentContainer,
     IEngine,
@@ -30,17 +30,17 @@ import type {
 })
 export class Engine implements IEngine {
     private frame_ = 0
-    private entities_: Map<IEntity, ComponentContainer> = new Map()
-    private systems_: Map<ISystem, Set<IEntity>> = new Map()
+    private entities_: Map<TEntity, ComponentContainer> = new Map()
+    private systems_: Map<ISystem, Set<TEntity>> = new Map()
 
-    private checkEntity_(entity: IEntity) {
+    private checkEntity_(entity: TEntity) {
         for (const system of this.systems_.keys()) {
             this.checkEntitySystem_(entity, system)
         }
     }
 
     private checkEntitySystem_(
-        entity: IEntity,
+        entity: TEntity,
         system: ISystem,
     ) {
         const components = this.entities_.get(entity)
@@ -102,12 +102,12 @@ export class Engine implements IEngine {
         return entities
     }
 
-    public hasEntity(entity: IEntity)
+    public hasEntity(entity: TEntity)
         : boolean {
         return this.entities_.has(entity)
     }
 
-    public getEntityComponents(entity: IEntity)
+    public getEntityComponents(entity: TEntity)
         : IComponentContainer {
         const components = this.entities_.get(entity)
         if (components == null) {
@@ -120,7 +120,7 @@ export class Engine implements IEngine {
     public addSystem(
         system: ISystem
     ): IEngine {
-        this.systems_.set(system, new Set<IEntity>())
+        this.systems_.set(system, new Set<TEntity>())
         for (const entity of this.entities_.keys()) {
             this.checkEntitySystem_(entity, system)
         }
@@ -145,7 +145,7 @@ export class Engine implements IEngine {
             this,
             system == null
                 ? this.entities_.keys()
-                : this.systems_.get(system) ?? [] as Iterable<IEntity>
+                : this.systems_.get(system) ?? [] as Iterable<TEntity>
         )
     }
 }

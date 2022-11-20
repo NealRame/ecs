@@ -5,7 +5,7 @@ import {
 
 import type {
     IComponentContainer,
-    IEntity,
+    TEntity,
     MapTConstructor,
 } from "./types"
 
@@ -14,7 +14,7 @@ export class ComponentContainer implements IComponentContainer{
     private components_ = new Map<Function, unknown>()
 
     constructor(
-        private entity_: IEntity,
+        private entity_: TEntity,
         private container_: Container,
         private updateComponentsCallback_: () => void,
     ) {}

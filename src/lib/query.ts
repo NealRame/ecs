@@ -3,7 +3,7 @@ import {
 } from "@nealrame/ts-injector"
 
 import type {
-    IEntity,
+    TEntity,
     IEntityQueryPredicate,
     IEngine,
 } from "./types"
@@ -11,7 +11,7 @@ import type {
 export class EntityQuerySet {
     constructor(
         private ecs_: IEngine,
-        private entities_: Iterable<IEntity>,
+        private entities_: Iterable<TEntity>,
     ) { }
 
     *[Symbol.iterator]() {
@@ -22,7 +22,7 @@ export class EntityQuerySet {
 
     find(
         pred: IEntityQueryPredicate
-    ): IEntity | undefined {
+    ): TEntity | undefined {
         for (const entity of this.entities_) {
             if (pred(this.ecs_.getEntityComponents(entity))) {
                 return entity
@@ -32,8 +32,8 @@ export class EntityQuerySet {
 
     filter(
         pred: IEntityQueryPredicate
-    ): Set<IEntity> {
-        const filtered = new Set<IEntity>()
+    ): Set<TEntity> {
+        const filtered = new Set<TEntity>()
         for (const entity of this.entities_) {
             if (pred(this.ecs_.getEntityComponents(entity))) {
                 filtered.add(entity)
@@ -44,8 +44,8 @@ export class EntityQuerySet {
 
     partition(
         pred: IEntityQueryPredicate
-    ): [Set<IEntity>, Set<IEntity>] {
-        const [filtered, rejected] = [new Set<IEntity>(), new Set<IEntity>()]
+    ): [Set<TEntity>, Set<TEntity>] {
+        const [filtered, rejected] = [new Set<TEntity>(), new Set<TEntity>()]
         for (const entity of this.entities_) {
             if (pred(this.ecs_.getEntityComponents(entity))) {
                 filtered.add(entity)

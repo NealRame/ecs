@@ -12,11 +12,11 @@ export type MapTConstructor<T extends Array<unknown>> = {
     [K in keyof T]: TConstructor<T[K]>
 }
 
-export type IEntity = number
+export type TEntity = number
 
 export interface IEntityFactory {
-    create(): Promise<IEntity>
-    bulkCreate(count: number): Promise<Array<IEntity>>
+    create(): Promise<TEntity>
+    bulkCreate(count: number): Promise<Array<TEntity>>
 }
 
 export interface IComponentContainer {
@@ -35,18 +35,18 @@ export interface IComponentContainer {
 export type IEntityQueryPredicate = (componentsContainer: IComponentContainer) => boolean
 
 export interface IEntityQuerySet {
-    [Symbol.iterator](): Iterator<IEntity>
+    [Symbol.iterator](): Iterator<TEntity>
 
-    find(pred: IEntityQueryPredicate): IEntity | undefined
-    filter(pred: IEntityQueryPredicate): Set<IEntity>
-    partition(pred: IEntityQueryPredicate): [Set<IEntity>, Set<IEntity>]
+    find(pred: IEntityQueryPredicate): TEntity | undefined
+    filter(pred: IEntityQueryPredicate): Set<TEntity>
+    partition(pred: IEntityQueryPredicate): [Set<TEntity>, Set<TEntity>]
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ISystem<Events extends EventMap = Record<string, any>> {
     readonly emitter: IEmitter<Events>
     readonly events: IReceiver<Events>
-    update(entities: Set<IEntity>, ecs: IEngine): void
+    update(entities: Set<TEntity>, ecs: IEngine): void
 }
 
 export interface IEngine {
@@ -54,10 +54,10 @@ export interface IEngine {
 
     update(): IEngine
 
-    createEntity(): Promise<IEntity>
-    createEntities(count: number): Promise<Array<IEntity>>
-    hasEntity(entity: IEntity): boolean
-    getEntityComponents(entity: IEntity): IComponentContainer
+    createEntity(): Promise<TEntity>
+    createEntities(count: number): Promise<Array<TEntity>>
+    hasEntity(entity: TEntity): boolean
+    getEntityComponents(entity: TEntity): IComponentContainer
 
     addSystem(system: ISystem): IEngine
     removeSystem(system: ISystem): IEngine

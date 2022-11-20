@@ -47,7 +47,7 @@ class RenderSystem extends ECS.SystemBase {
         this.context_ = screen_.getContext("2d")
     }
 
-    public async update(entities: Set<ECS.IEntity>, ecs: ECS.IEngine) {
+    public async update(entities: Set<ECS.TEntity>, ecs: ECS.IEngine) {
         this.context_.fillStyle = "#000"
         this.context_.fillRect(0, 0, this.screen_.width, this.screen_.height)
 
@@ -80,7 +80,7 @@ class MoveSnakeSystem extends ECS.SystemBase {
         @Inject(SnakeSpeed) private speed_: number,
     ) { super() }
 
-    public update(entities: Set<ECS.IEntity>, ecs: ECS.IEngine) {
+    public update(entities: Set<ECS.TEntity>, ecs: ECS.IEngine) {
         if ((ecs.frame%this.speed_) === 0) {
             // update snake entities position
             for (const entity of entities) {
@@ -139,7 +139,7 @@ class SnakeControlerSystem extends ECS.SystemBase<SnakeControlerEvents> {
         })
     }
 
-    private updateCourse_(head: ECS.IEntity, ecs: ECS.IEngine) {
+    private updateCourse_(head: ECS.TEntity, ecs: ECS.IEngine) {
         if (this.course_ != null && head != null) {
             const course = ecs.getEntityComponents(head).get(Course)
             if (ECS.maths.Vector2D.dot(this.course_, course) === 0) {
@@ -151,8 +151,8 @@ class SnakeControlerSystem extends ECS.SystemBase<SnakeControlerEvents> {
     }
 
     private checkCollision_(
-        head: ECS.IEntity,
-        tail: Array<ECS.IEntity>,
+        head: ECS.TEntity,
+        tail: Array<ECS.TEntity>,
         ecs: ECS.IEngine,
     ) {
         if (head != null) {
@@ -176,7 +176,7 @@ class SnakeControlerSystem extends ECS.SystemBase<SnakeControlerEvents> {
         }
     }
 
-    public update(entities: Set<ECS.IEntity>, ecs: ECS.IEngine) {
+    public update(entities: Set<ECS.TEntity>, ecs: ECS.IEngine) {
         const [head, ...tail] = Array.from(entities)
         this.updateCourse_(head, ecs)
         this.checkCollision_(head, tail, ecs)
@@ -184,7 +184,7 @@ class SnakeControlerSystem extends ECS.SystemBase<SnakeControlerEvents> {
 }
 
 type FruitControlerEvents = {
-    fruitEaten: ECS.IEntity,
+    fruitEaten: ECS.TEntity,
 }
 
 @ECS.System({
@@ -194,7 +194,7 @@ type FruitControlerEvents = {
     )
 })
 class FruitControlerSystem extends ECS.SystemBase<FruitControlerEvents> {
-    public update(entities: Set<ECS.IEntity>, ecs: ECS.IEngine) {
+    public update(entities: Set<ECS.TEntity>, ecs: ECS.IEngine) {
         const a = Array.from(entities)
         if (a.length === 2) {
             const [p1, p2] = a.map(entity => ecs.getEntityComponents(entity).get(Position))
