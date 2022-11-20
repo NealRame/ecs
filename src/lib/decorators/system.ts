@@ -17,7 +17,7 @@ import type {
 } from "../types"
 
 export type SystemMetadata = {
-    predicate: IEntityQueryPredicate
+    components: IEntityQueryPredicate
 }
 
 export function System(metadata: Partial<SystemMetadata>) {
