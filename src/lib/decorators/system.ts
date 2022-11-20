@@ -5,20 +5,16 @@ import {
 
 import {
     SystemMetadataKey,
-} from "./constants"
+} from "../constants"
 
 import {
     QueryNone,
-} from "./query"
+} from "../query"
 
 import type {
     IEntityQueryPredicate,
     ISystem,
-} from "./types"
-
-export function Component(target: TConstructor) {
-    return Service()(target)
-}
+} from "../types"
 
 export type SystemMetadata = {
     predicate: IEntityQueryPredicate
