@@ -46,21 +46,21 @@ export interface IEntityQuerySet {
 export interface ISystem<Events extends EventMap = Record<string, any>> {
     readonly emitter: IEmitter<Events>
     readonly events: IReceiver<Events>
-    update(entities: Set<IEntity>, ecs: IECS): void
+    update(entities: Set<IEntity>, ecs: IEngine): void
 }
 
-export interface IECS {
+export interface IEngine {
     readonly frame: number
 
-    update(): IECS
+    update(): IEngine
 
     createEntity(): Promise<IEntity>
     createEntities(count: number): Promise<Array<IEntity>>
     hasEntity(entity: IEntity): boolean
     getEntityComponents(entity: IEntity): IComponentContainer
 
-    addSystem(system: ISystem): IECS
-    removeSystem(system: ISystem): IECS
+    addSystem(system: ISystem): IEngine
+    removeSystem(system: ISystem): IEngine
 
     query(system?: ISystem): IEntityQuerySet
 }

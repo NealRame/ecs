@@ -1,6 +1,6 @@
 import type {
     IEntity,
-    IECS,
+    IEngine,
     ISystem,
 } from "./types"
 
@@ -22,5 +22,5 @@ export abstract class SystemBase<Events extends EventMap = Record<string, any>>
     public readonly emitter: IEmitter<Events>
     public readonly events: IReceiver<Events>
 
-    public abstract update(entities: Set<IEntity>, ecs: IECS): void
+    public abstract update(entities: Set<IEntity>, ecs: IEngine): void
 }

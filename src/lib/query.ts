@@ -5,12 +5,12 @@ import {
 import type {
     IEntity,
     IEntityQueryPredicate,
-    IECS,
+    IEngine,
 } from "./types"
 
 export class EntityQuerySet {
     constructor(
-        private ecs_: IECS,
+        private ecs_: IEngine,
         private entities_: Iterable<IEntity>,
     ) { }
 

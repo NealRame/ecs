@@ -4,20 +4,7 @@ import {
     Inject,
 } from "@nealrame/ts-injector"
 
-import {
-    type IECS,
-    type IEntity,
-    BasicEntityFactory,
-    Component,
-    SystemBase,
-    ECS,
-    EntityFactory,
-    QueryHasAll,
-    QueryHasOne,
-    QueryAnd,
-    maths,
-    System,
-} from "../lib"
+import * as ECS from "../lib"
 
 import "./style.css"
 
@@ -26,30 +13,30 @@ const ScreenPixelResolution: Token<number> = Symbol("Pixel resolution")
 
 const SnakeSpeed: Token<number> = Symbol("Snake speed")
 
-@Component
-class Position implements maths.TVector2D {
+@ECS.Component
+class Position implements ECS.maths.TVector2D {
     constructor(
         public x: number,
         public y: number,
     ) {}
 }
 
-@Component
-class Course implements maths.TVector2D {
+@ECS.Component
+class Course implements ECS.maths.TVector2D {
     constructor(
         public x: number,
         public y: number,
     ) {}
 }
 
-@Component class Fruit {}
-@Component class SnakeHead {}
-@Component class SnakeTail {}
+@ECS.Component class Fruit {}
+@ECS.Component class SnakeHead {}
+@ECS.Component class SnakeTail {}
 
-@System({
-    predicate: QueryHasAll(Position),
+@ECS.System({
+    predicate: ECS.QueryHasAll(Position),
 })
-class RenderSystem extends SystemBase {
+class RenderSystem extends ECS.SystemBase {
     private context_: CanvasRenderingContext2D
 
     constructor(
@@ -60,7 +47,7 @@ class RenderSystem extends SystemBase {
         this.context_ = screen_.getContext("2d")
     }
 
-    public async update(entities: Set<IEntity>, ecs: IECS) {
+    public async update(entities: Set<ECS.IEntity>, ecs: ECS.IEngine) {
         this.context_.fillStyle = "#000"
         this.context_.fillRect(0, 0, this.screen_.width, this.screen_.height)
 
@@ -85,31 +72,31 @@ class RenderSystem extends SystemBase {
     }
 }
 
-@System({
-    predicate: QueryHasAll(Position, Course),
+@ECS.System({
+    predicate: ECS.QueryHasAll(Position, Course),
 })
-class MoveSnakeSystem extends SystemBase {
+class MoveSnakeSystem extends ECS.SystemBase {
     public constructor(
         @Inject(SnakeSpeed) private speed_: number,
     ) { super() }
 
-    public update(entities: Set<IEntity>, ecs: IECS) {
+    public update(entities: Set<ECS.IEntity>, ecs: ECS.IEngine) {
         if ((ecs.frame%this.speed_) === 0) {
             // update snake entities position
             for (const entity of entities) {
                 const [position, course] = ecs.getEntityComponents(entity).getAll(Position, Course)
 
-                maths.Vector2D.wrap(position).add(course)
+                ECS.maths.Vector2D.wrap(position).add(course)
             }
 
             // update snake entities course
-            let previousCourse: maths.TVector2D | null = null
+            let previousCourse: ECS.maths.TVector2D | null = null
             for (const entity of entities) {
                 const course = ecs.getEntityComponents(entity).get(Course)
                 const { x, y } = course
 
                 if (previousCourse !== null) {
-                    maths.Vector2D.wrap(course).set(previousCourse)
+                    ECS.maths.Vector2D.wrap(course).set(previousCourse)
                 }
 
                 previousCourse = { x, y }
@@ -123,11 +110,11 @@ type SnakeControlerEvents = {
     wallCollision: void,
 }
 
-@System({
-    predicate: QueryHasAll(Position, Course),
+@ECS.System({
+    predicate: ECS.QueryHasAll(Position, Course),
 })
-class SnakeControlerSystem extends SystemBase<SnakeControlerEvents> {
-    private course_: maths.TVector2D | null = null
+class SnakeControlerSystem extends ECS.SystemBase<SnakeControlerEvents> {
+    private course_: ECS.maths.TVector2D | null = null
 
     constructor(
         @Inject(Screen) private screen_: HTMLCanvasElement,
@@ -152,10 +139,10 @@ class SnakeControlerSystem extends SystemBase<SnakeControlerEvents> {
         })
     }
 
-    private updateCourse_(head: IEntity, ecs: IECS) {
+    private updateCourse_(head: ECS.IEntity, ecs: ECS.IEngine) {
         if (this.course_ != null && head != null) {
             const course = ecs.getEntityComponents(head).get(Course)
-            if (maths.Vector2D.dot(this.course_, course) === 0) {
+            if (ECS.maths.Vector2D.dot(this.course_, course) === 0) {
                 course.x = this.course_.x
                 course.y = this.course_.y
                 this.course_ = null
@@ -164,13 +151,13 @@ class SnakeControlerSystem extends SystemBase<SnakeControlerEvents> {
     }
 
     private checkCollision_(
-        head: IEntity,
-        tail: Array<IEntity>,
-        ecs: IECS,
+        head: ECS.IEntity,
+        tail: Array<ECS.IEntity>,
+        ecs: ECS.IEngine,
     ) {
         if (head != null) {
             const headPosition = ecs.getEntityComponents(head).get(Position)
-            const rect = maths.Rect.fromSize(this.screen_).scale(1/this.pixelResolution_)
+            const rect = ECS.maths.Rect.fromSize(this.screen_).scale(1/this.pixelResolution_)
 
             // check collision with canvas border
             if (!rect.contains(headPosition)) {
@@ -181,7 +168,7 @@ class SnakeControlerSystem extends SystemBase<SnakeControlerEvents> {
             // check collision with snake tail
             for (const entity of tail) {
                 const tailPosition = ecs.getEntityComponents(entity).get(Position)
-                if (maths.Vector2D.equals(headPosition, tailPosition)) {
+                if (ECS.maths.Vector2D.equals(headPosition, tailPosition)) {
                     this.emitter.emit("tailCollision")
                     return
                 }
@@ -189,7 +176,7 @@ class SnakeControlerSystem extends SystemBase<SnakeControlerEvents> {
         }
     }
 
-    public update(entities: Set<IEntity>, ecs: IECS) {
+    public update(entities: Set<ECS.IEntity>, ecs: ECS.IEngine) {
         const [head, ...tail] = Array.from(entities)
         this.updateCourse_(head, ecs)
         this.checkCollision_(head, tail, ecs)
@@ -197,17 +184,17 @@ class SnakeControlerSystem extends SystemBase<SnakeControlerEvents> {
 }
 
 type FruitControlerEvents = {
-    fruitEaten: IEntity,
+    fruitEaten: ECS.IEntity,
 }
 
-@System({
-    predicate: QueryAnd(
-        QueryHasAll(Position),
-        QueryHasOne(Fruit, SnakeHead),
+@ECS.System({
+    predicate: ECS.QueryAnd(
+        ECS.QueryHasAll(Position),
+        ECS.QueryHasOne(Fruit, SnakeHead),
     )
 })
-class FruitControlerSystem extends SystemBase<FruitControlerEvents> {
-    public update(entities: Set<IEntity>, ecs: IECS) {
+class FruitControlerSystem extends ECS.SystemBase<FruitControlerEvents> {
+    public update(entities: Set<ECS.IEntity>, ecs: ECS.IEngine) {
         const a = Array.from(entities)
         if (a.length === 2) {
             const [p1, p2] = a.map(entity => ecs.getEntityComponents(entity).get(Position))
@@ -222,18 +209,18 @@ class FruitControlerSystem extends SystemBase<FruitControlerEvents> {
 
 
 async function createSnake(
-    ecs: ECS,
+    ecs: ECS.Engine,
     length: number,
-    pos: maths.TVector2D,
-    course: maths.TVector2D = maths.Vector2D.north(),
+    pos: ECS.maths.TVector2D,
+    course: ECS.maths.TVector2D = ECS.maths.Vector2D.north(),
 ) {
     const entities = await ecs.createEntities(length)
     entities.forEach((entity, i) => {
         const components = ecs.getEntityComponents(entity)
 
-        maths.Vector2D.wrap(components.add(Position)).set(pos)
-        maths.Vector2D.wrap(components.add(Course)).set(course)
-        maths.Vector2D.wrap(pos).sub(course)
+        ECS.maths.Vector2D.wrap(components.add(Position)).set(pos)
+        ECS.maths.Vector2D.wrap(components.add(Course)).set(course)
+        ECS.maths.Vector2D.wrap(pos).sub(course)
 
         if (i === 0 && length > 1) {
             components.add(SnakeHead)
@@ -243,13 +230,13 @@ async function createSnake(
     })
 }
 
-async function createFruit(ecs: ECS, x: number, y: number) {
+async function createFruit(ecs: ECS.Engine, x: number, y: number) {
     const entity = await ecs.createEntity()
     const components = ecs.getEntityComponents(entity)
 
     components.add(Fruit)
 
-    maths.Vector2D.wrap(components.add(Position)).set({ x, y })
+    ECS.maths.Vector2D.wrap(components.add(Position)).set({ x, y })
 }
 
 const WIDTH = 84
@@ -264,12 +251,12 @@ screen.height = HEIGHT*PIXEL_SIZE
 ;(async function() {
     const container = new Container()
 
-    container.set(EntityFactory, BasicEntityFactory())
+    container.set(ECS.EntityFactory, ECS.BasicEntityFactory())
     container.set(Screen, screen)
     container.set(ScreenPixelResolution, PIXEL_SIZE)
     container.set(SnakeSpeed, PIXEL_SIZE)
 
-    const ecs = container.get(ECS)
+    const ecs = container.get(ECS.Engine)
 
     const snakeControler = container.get(SnakeControlerSystem)
     const fruitControler = container.get(FruitControlerSystem)
@@ -286,7 +273,7 @@ screen.height = HEIGHT*PIXEL_SIZE
     let gameOver = false
 
     fruitControler.events.on("fruitEaten", async entity => {
-        const old_tail = ecs.query().find(QueryHasAll(SnakeTail))
+        const old_tail = ecs.query().find(ECS.QueryHasAll(SnakeTail))
 
         if (old_tail != null) {
             const old_tail_components = ecs.getEntityComponents(old_tail)
@@ -296,11 +283,11 @@ screen.height = HEIGHT*PIXEL_SIZE
             const [old_tail_position, old_tail_course] = old_tail_components.getAll(Position, Course)
             const new_tail_position = { x: 0, y: 0 }
 
-            maths.Vector2D.wrap(new_tail_position).set(old_tail_position).sub(old_tail_course)
+            ECS.maths.Vector2D.wrap(new_tail_position).set(old_tail_position).sub(old_tail_course)
 
             await createSnake(ecs, 1, new_tail_position, old_tail_course)
 
-            maths.Vector2D.wrap(ecs.getEntityComponents(entity).add(Position)).set({
+            ECS.maths.Vector2D.wrap(ecs.getEntityComponents(entity).add(Position)).set({
                 x: Math.floor(Math.random()*WIDTH),
                 y: Math.floor(Math.random()*HEIGHT),
             })

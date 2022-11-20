@@ -19,7 +19,7 @@ import type {
     IEntity,
     IEntityFactory,
     IComponentContainer,
-    IECS,
+    IEngine,
     IEntityQuerySet,
     ISystem,
 } from "./types"
@@ -28,7 +28,7 @@ import type {
 @IOC.Service({
     lifecycle: IOC.ServiceLifecycle.Singleton,
 })
-export class ECS implements IECS {
+export class Engine implements IEngine {
     private frame_ = 0
     private entities_: Map<IEntity, ComponentContainer> = new Map()
     private systems_: Map<ISystem, Set<IEntity>> = new Map()
@@ -68,7 +68,7 @@ export class ECS implements IECS {
     }
 
     public update()
-        : IECS {
+        : IEngine {
         for (const [system, entities] of this.systems_.entries()) {
             system.update(entities, this)
         }
@@ -119,7 +119,7 @@ export class ECS implements IECS {
     // System management
     public addSystem(
         system: ISystem
-    ): IECS {
+    ): IEngine {
         this.systems_.set(system, new Set<IEntity>())
         for (const entity of this.entities_.keys()) {
             this.checkEntitySystem_(entity, system)
@@ -133,7 +133,7 @@ export class ECS implements IECS {
 
     public removeSystem(
         system: ISystem
-    ): IECS {
+    ): IEngine {
         this.systems_.delete(system)
         return this
     }
