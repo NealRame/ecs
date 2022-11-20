@@ -61,7 +61,7 @@ class RenderSystem extends ECS.SystemBase {
             if (components.has(Fruit)) {
                 this.context_.fillStyle = `red`
             } else if (components.has(SnakeHead)) {
-                this.context_.fillStyle = `blue`
+                this.context_.fillStyle = `darkgreen`
             } else {
                 this.context_.fillStyle = `green`
             }
