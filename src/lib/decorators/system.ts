@@ -17,14 +17,14 @@ import type {
 } from "../types"
 
 export type SystemMetadata = {
-    components: TEntityQueryPredicate
+    entities: TEntityQueryPredicate
 }
 
 export function System(metadata: Partial<SystemMetadata>) {
     return (target: TConstructor<ISystem>) => {
         Service()(target)
         Reflect.defineMetadata(SystemMetadataKey, {
-            predicate: QueryNone,
+            entities: QueryNone,
             ...metadata,
         }, target)
     }

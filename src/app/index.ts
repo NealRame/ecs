@@ -34,7 +34,7 @@ class Course implements ECS.maths.TVector2D {
 @ECS.Component class SnakeTail {}
 
 @ECS.System({
-    components: ECS.QueryHasAll(Position),
+    entities: ECS.QueryHasAll(Position),
 })
 class RenderSystem extends ECS.SystemBase {
     private context_: CanvasRenderingContext2D
@@ -73,7 +73,7 @@ class RenderSystem extends ECS.SystemBase {
 }
 
 @ECS.System({
-    components: ECS.QueryHasAll(Position, Course),
+    entities: ECS.QueryHasAll(Position, Course),
 })
 class MoveSnakeSystem extends ECS.SystemBase {
     public constructor(
@@ -111,7 +111,7 @@ type SnakeControlerEvents = {
 }
 
 @ECS.System({
-    components: ECS.QueryHasAll(Position, Course),
+    entities: ECS.QueryHasAll(Position, Course),
 })
 class SnakeControlerSystem extends ECS.SystemBase<SnakeControlerEvents> {
     private course_: ECS.maths.TVector2D | null = null
@@ -188,7 +188,7 @@ type FruitControlerEvents = {
 }
 
 @ECS.System({
-    components: ECS.QueryAnd(
+    entities: ECS.QueryAnd(
         ECS.QueryHasAll(Position),
         ECS.QueryHasOne(Fruit, SnakeHead),
     )

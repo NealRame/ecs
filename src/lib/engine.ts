@@ -47,7 +47,7 @@ export class Engine implements IEngine {
         if (components != null) {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const entities = this.systems_.get(system)!
-            const { predicate } = Reflect.getMetadata(SystemMetadataKey, system.constructor)
+            const { entities: predicate } = Reflect.getMetadata(SystemMetadataKey, system.constructor)
             if (predicate(components)) {
                 entities.add(entity)
             } else {
