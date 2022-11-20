@@ -12,12 +12,12 @@ import {
 } from "../query"
 
 import type {
-    IEntityQueryPredicate,
+    TEntityQueryPredicate,
     ISystem,
 } from "../types"
 
 export type SystemMetadata = {
-    components: IEntityQueryPredicate
+    components: TEntityQueryPredicate
 }
 
 export function System(metadata: Partial<SystemMetadata>) {

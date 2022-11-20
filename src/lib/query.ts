@@ -4,7 +4,7 @@ import {
 
 import type {
     TEntity,
-    IEntityQueryPredicate,
+    TEntityQueryPredicate,
     IEngine,
 } from "./types"
 
@@ -21,7 +21,7 @@ export class EntityQuerySet {
     }
 
     find(
-        pred: IEntityQueryPredicate
+        pred: TEntityQueryPredicate
     ): TEntity | undefined {
         for (const entity of this.entities_) {
             if (pred(this.ecs_.getEntityComponents(entity))) {
@@ -31,7 +31,7 @@ export class EntityQuerySet {
     }
 
     filter(
-        pred: IEntityQueryPredicate
+        pred: TEntityQueryPredicate
     ): Set<TEntity> {
         const filtered = new Set<TEntity>()
         for (const entity of this.entities_) {
@@ -43,7 +43,7 @@ export class EntityQuerySet {
     }
 
     partition(
-        pred: IEntityQueryPredicate
+        pred: TEntityQueryPredicate
     ): [Set<TEntity>, Set<TEntity>] {
         const [filtered, rejected] = [new Set<TEntity>(), new Set<TEntity>()]
         for (const entity of this.entities_) {
@@ -67,25 +67,25 @@ export function QueryNone(): boolean {
 }
 
 export function QueryAnd(
-    ...predicates: Array<IEntityQueryPredicate>
-): IEntityQueryPredicate {
+    ...predicates: Array<TEntityQueryPredicate>
+): TEntityQueryPredicate {
     return componentsContainer => predicates.every(pred => pred(componentsContainer))
 }
 
 export function QueryOr(
-    ...predicates: Array<IEntityQueryPredicate>
-): IEntityQueryPredicate {
+    ...predicates: Array<TEntityQueryPredicate>
+): TEntityQueryPredicate {
     return componentsContainer => predicates.some(pred => pred(componentsContainer))
 }
 
 export function QueryHasAll(
     ...componentTypes: Array<TConstructor>
-): IEntityQueryPredicate {
+): TEntityQueryPredicate {
     return componentsContainer => componentsContainer.hasAll(componentTypes)
 }
 
 export function QueryHasOne(
     ...componentTypes: Array<TConstructor>
-): IEntityQueryPredicate {
+): TEntityQueryPredicate {
     return componentsContainer => componentsContainer.hasOne(componentTypes)
 }

@@ -32,14 +32,14 @@ export interface IComponentContainer {
     hasOne(componentTypes: Iterable<TConstructor>): boolean
 }
 
-export type IEntityQueryPredicate = (componentsContainer: IComponentContainer) => boolean
+export type TEntityQueryPredicate = (componentsContainer: IComponentContainer) => boolean
 
 export interface IEntityQuerySet {
     [Symbol.iterator](): Iterator<TEntity>
 
-    find(pred: IEntityQueryPredicate): TEntity | undefined
-    filter(pred: IEntityQueryPredicate): Set<TEntity>
-    partition(pred: IEntityQueryPredicate): [Set<TEntity>, Set<TEntity>]
+    find(pred: TEntityQueryPredicate): TEntity | undefined
+    filter(pred: TEntityQueryPredicate): Set<TEntity>
+    partition(pred: TEntityQueryPredicate): [Set<TEntity>, Set<TEntity>]
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
