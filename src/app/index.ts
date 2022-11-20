@@ -26,7 +26,7 @@ const ScreenPixelResolution: Token<number> = Symbol("Pixel resolution")
 
 const SnakeSpeed: Token<number> = Symbol("Snake speed")
 
-@Component()
+@Component
 class Position implements maths.TVector2D {
     constructor(
         public x: number,
@@ -34,7 +34,7 @@ class Position implements maths.TVector2D {
     ) {}
 }
 
-@Component()
+@Component
 class Course implements maths.TVector2D {
     constructor(
         public x: number,
@@ -42,9 +42,9 @@ class Course implements maths.TVector2D {
     ) {}
 }
 
-@Component() class Fruit {}
-@Component() class SnakeHead {}
-@Component() class SnakeTail {}
+@Component class Fruit {}
+@Component class SnakeHead {}
+@Component class SnakeTail {}
 
 @System({
     predicate: QueryHasAll(Position),

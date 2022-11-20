@@ -16,9 +16,8 @@ import type {
     ISystem,
 } from "./types"
 
-export function Component()
-    : ClassDecorator {
-    return Service()
+export function Component(target: TConstructor) {
+    return Service()(target)
 }
 
 export type SystemMetadata = {
