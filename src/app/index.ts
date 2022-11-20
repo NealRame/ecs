@@ -15,6 +15,7 @@ import {
     QueryHasAll,
     QueryHasOne,
     QueryAnd,
+    maths,
     System,
 } from "../lib"
 
@@ -25,52 +26,8 @@ const ScreenPixelResolution: Token<number> = Symbol("Pixel resolution")
 
 const SnakeSpeed: Token<number> = Symbol("Snake speed")
 
-interface IVector {
-    x: number
-    y: number
-}
-
-class Vector {
-    constructor(private v_: IVector) {}
-
-    get y(): number {
-        return this.v_.y
-    }
-
-    set(v: IVector): Vector {
-        this.v_.x = v.x
-        this.v_.y = v.y
-        return this
-    }
-
-    add(u: IVector): Vector {
-        this.v_.x += u.x
-        this.v_.y += u.y
-        return this
-    }
-
-    sub(u: IVector): Vector {
-        this.v_.x -= u.x
-        this.v_.y -= u.y
-        return this
-    }
-
-    static dot(u: IVector, v: IVector): number {
-        return u.x*v.x + u.y*v.y
-    }
-
-    static wrap(v: IVector): Vector {
-        return new Vector(v)
-    }
-
-    public static north = () => ({ x:  0, y: -1 })
-    public static south = () => ({ x:  0, y:  1 })
-    public static east  = () => ({ x:  1, y:  0 })
-    public static west  = () => ({ x: -1, y:  0 })
-}
-
 @Component()
-class Position implements IVector {
+class Position implements maths.TVector2D {
     constructor(
         public x: number,
         public y: number,
@@ -78,7 +35,7 @@ class Position implements IVector {
 }
 
 @Component()
-class Course implements IVector {
+class Course implements maths.TVector2D {
     constructor(
         public x: number,
         public y: number,
@@ -142,20 +99,20 @@ class MoveSnakeSystem extends SystemBase {
             for (const entity of entities) {
                 const [position, course] = ecs.getEntityComponents(entity).getAll(Position, Course)
 
-                Vector.wrap(position).add(course)
+                maths.Vector2D.wrap(position).add(course)
             }
 
             // update snake entities course
-            let prev_course: IVector | null = null
+            let previousCourse: maths.TVector2D | null = null
             for (const entity of entities) {
                 const course = ecs.getEntityComponents(entity).get(Course)
                 const { x, y } = course
 
-                if (prev_course !== null) {
-                    Vector.wrap(course).set(prev_course)
+                if (previousCourse !== null) {
+                    maths.Vector2D.wrap(course).set(previousCourse)
                 }
 
-                prev_course = { x, y }
+                previousCourse = { x, y }
             }
         }
     }
@@ -170,7 +127,7 @@ type SnakeControlerEvents = {
     predicate: QueryHasAll(Position, Course),
 })
 class SnakeControlerSystem extends SystemBase<SnakeControlerEvents> {
-    private course_: IVector | null = null
+    private course_: maths.TVector2D | null = null
 
     constructor(
         @Inject(Screen) private screen_: HTMLCanvasElement,
@@ -198,7 +155,7 @@ class SnakeControlerSystem extends SystemBase<SnakeControlerEvents> {
     private updateCourse_(head: IEntity, ecs: IECS) {
         if (this.course_ != null && head != null) {
             const course = ecs.getEntityComponents(head).get(Course)
-            if (Vector.dot(this.course_, course) === 0) {
+            if (maths.Vector2D.dot(this.course_, course) === 0) {
                 course.x = this.course_.x
                 course.y = this.course_.y
                 this.course_ = null
@@ -212,22 +169,19 @@ class SnakeControlerSystem extends SystemBase<SnakeControlerEvents> {
         ecs: IECS,
     ) {
         if (head != null) {
-            const { width, height } = this.screen_
-            const { x, y } = ecs.getEntityComponents(head).get(Position)
+            const headPosition = ecs.getEntityComponents(head).get(Position)
+            const rect = maths.Rect.fromSize(this.screen_).scale(1/this.pixelResolution_)
 
             // check collision with canvas border
-            if (x < 0
-                || y < 0
-                || x >= width/this.pixelResolution_
-                || y >= height/this.pixelResolution_) {
+            if (!rect.contains(headPosition)) {
                 this.emitter.emit("wallCollision")
                 return
             }
 
             // check collision with snake tail
             for (const entity of tail) {
-                const position = ecs.getEntityComponents(entity).get(Position)
-                if (position.x === x && position.y === y) {
+                const tailPosition = ecs.getEntityComponents(entity).get(Position)
+                if (maths.Vector2D.equals(headPosition, tailPosition)) {
                     this.emitter.emit("tailCollision")
                     return
                 }
@@ -270,16 +224,16 @@ class FruitControlerSystem extends SystemBase<FruitControlerEvents> {
 async function createSnake(
     ecs: ECS,
     length: number,
-    pos: IVector,
-    course: IVector = Vector.north(),
+    pos: maths.TVector2D,
+    course: maths.TVector2D = maths.Vector2D.north(),
 ) {
     const entities = await ecs.createEntities(length)
     entities.forEach((entity, i) => {
         const components = ecs.getEntityComponents(entity)
 
-        Vector.wrap(components.add(Position)).set(pos)
-        Vector.wrap(components.add(Course)).set(course)
-        Vector.wrap(pos).sub(course)
+        maths.Vector2D.wrap(components.add(Position)).set(pos)
+        maths.Vector2D.wrap(components.add(Course)).set(course)
+        maths.Vector2D.wrap(pos).sub(course)
 
         if (i === 0 && length > 1) {
             components.add(SnakeHead)
@@ -295,7 +249,7 @@ async function createFruit(ecs: ECS, x: number, y: number) {
 
     components.add(Fruit)
 
-    Vector.wrap(components.add(Position)).set({ x, y })
+    maths.Vector2D.wrap(components.add(Position)).set({ x, y })
 }
 
 const WIDTH = 84
@@ -342,11 +296,11 @@ screen.height = HEIGHT*PIXEL_SIZE
             const [old_tail_position, old_tail_course] = old_tail_components.getAll(Position, Course)
             const new_tail_position = { x: 0, y: 0 }
 
-            Vector.wrap(new_tail_position).set(old_tail_position).sub(old_tail_course)
+            maths.Vector2D.wrap(new_tail_position).set(old_tail_position).sub(old_tail_course)
 
             await createSnake(ecs, 1, new_tail_position, old_tail_course)
 
-            Vector.wrap(ecs.getEntityComponents(entity).add(Position)).set({
+            maths.Vector2D.wrap(ecs.getEntityComponents(entity).add(Position)).set({
                 x: Math.floor(Math.random()*WIDTH),
                 y: Math.floor(Math.random()*HEIGHT),
             })
