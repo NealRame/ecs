@@ -161,7 +161,7 @@ class SnakeControlerSystem extends ECS.SystemBase<SnakeControlerEvents> {
 
             // check collision with canvas border
             if (!rect.contains(headPosition)) {
-                this.emitter.emit("wallCollision")
+                this.emit("wallCollision")
                 return
             }
 
@@ -169,7 +169,7 @@ class SnakeControlerSystem extends ECS.SystemBase<SnakeControlerEvents> {
             for (const entity of tail) {
                 const tailPosition = ecs.getEntityComponents(entity).get(Position)
                 if (ECS.maths.Vector2D.equals(headPosition, tailPosition)) {
-                    this.emitter.emit("tailCollision")
+                    this.emit("tailCollision")
                     return
                 }
             }
@@ -201,7 +201,7 @@ class FruitControlerSystem extends ECS.SystemBase<FruitControlerEvents> {
             if (p1.x === p2.x && p1.y === p2.y) {
                 const fruit = a.find(entity => ecs.getEntityComponents(entity).has(Fruit))
                 ecs.getEntityComponents(fruit).remove(Position)
-                this.emitter.emit("fruitEaten", fruit)
+                this.emit("fruitEaten", fruit)
             }
         }
     }

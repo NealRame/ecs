@@ -3,9 +3,9 @@ import type {
 } from "@nealrame/ts-injector"
 
 import type {
-    IEmitter,
     IReceiver,
-    EventMap,
+    TEmitter,
+    TEventMap,
 } from "@nealrame/ts-events"
 
 export type MapTConstructor<T extends Array<unknown>> = {
@@ -43,8 +43,8 @@ export interface IEntityQuerySet {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export interface ISystem<Events extends EventMap = Record<string, any>> {
-    readonly emitter: IEmitter<Events>
+export interface ISystem<Events extends TEventMap = Record<string, any>> {
+    readonly emit: TEmitter<Events>
     readonly events: IReceiver<Events>
     update(entities: Set<TEntity>, ecs: IEngine): void
 }
