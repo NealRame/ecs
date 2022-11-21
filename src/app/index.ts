@@ -261,19 +261,13 @@ screen.height = HEIGHT*PIXEL_SIZE
     const snakeControler = container.get(SnakeControlerSystem)
     const fruitControler = container.get(FruitControlerSystem)
 
-    ecs
-        .addSystem(fruitControler)
-        .addSystem(snakeControler)
-        .addSystem(container.get(RenderSystem))
-        .addSystem(container.get(MoveSnakeSystem))
-
     createSnake(ecs, 5, { x: 10, y: 10 },)
     createFruit(ecs, 20, 20)
 
     let gameOver = false
 
     fruitControler.events.on("fruitEaten", async entity => {
-        const old_tail = ecs.query().find(ECS.QueryHasAll(SnakeTail))
+        const old_tail = ecs.queryEntities().find(ECS.QueryHasAll(SnakeTail))
 
         if (old_tail != null) {
             const old_tail_components = ecs.getEntityComponents(old_tail)

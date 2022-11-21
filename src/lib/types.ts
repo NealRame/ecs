@@ -52,15 +52,18 @@ export interface ISystem<Events extends TEventMap = Record<string, any>> {
 export interface IEngine {
     readonly frame: number
 
-    update(): IEngine
-
     createEntity(): Promise<TEntity>
     createEntities(count: number): Promise<Array<TEntity>>
     hasEntity(entity: TEntity): boolean
     getEntityComponents(entity: TEntity): IComponentContainer
 
-    addSystem(system: ISystem): IEngine
-    removeSystem(system: ISystem): IEngine
+    hasSystem(system: TConstructor<ISystem>): boolean
+    getSystem(System: TConstructor<ISystem>): ISystem
 
-    query(system?: ISystem): IEntityQuerySet
+    queryEntities(System?: TConstructor<ISystem>): IEntityQuerySet
+
+    update(): IEngine
+
+    start(): IEngine
+    stop(): IEngine
 }

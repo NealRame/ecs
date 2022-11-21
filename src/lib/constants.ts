@@ -7,4 +7,6 @@ import type {
 } from "./types"
 
 export const EntityFactory: Token<IEntityFactory> = Symbol("Entity factory")
-export const SystemMetadataKey = Symbol("System")
+
+export const SystemListKey = Symbol("System list")
+export const SystemMetadataKey = Symbol("System metadata")

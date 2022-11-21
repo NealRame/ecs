@@ -12,6 +12,10 @@ import {
 } from "./constants"
 
 import {
+    getSystems,
+} from "./decorators/helpers"
+
+import {
     EntityQuerySet,
 } from "./query"
 
@@ -32,6 +36,17 @@ export class Engine implements IEngine {
     private frame_ = 0
     private entities_: Map<TEntity, ComponentContainer> = new Map()
     private systems_: Map<ISystem, Set<TEntity>> = new Map()
+
+    // System management
+    private addSystem_(
+        system: ISystem
+    ): IEngine {
+        this.systems_.set(system, new Set<TEntity>())
+        for (const entity of this.entities_.keys()) {
+            this.checkEntitySystem_(entity, system)
+        }
+        return this
+    }
 
     private checkEntity_(entity: TEntity) {
         for (const system of this.systems_.keys()) {
@@ -61,7 +76,11 @@ export class Engine implements IEngine {
         private container_: IOC.Container,
         @IOC.Inject(EntityFactory)
         private entityFactory_: IEntityFactory,
-    ) {}
+    ) {
+        for (const SystemClass of getSystems()) {
+            this.addSystem_(this.container_.get(SystemClass))
+        }
+    }
 
     public get frame() {
         return this.frame_
@@ -116,36 +135,40 @@ export class Engine implements IEngine {
         return components
     }
 
-    // System management
-    public addSystem(
-        system: ISystem
-    ): IEngine {
-        this.systems_.set(system, new Set<TEntity>())
-        for (const entity of this.entities_.keys()) {
-            this.checkEntitySystem_(entity, system)
+    public getSystem(
+        System: IOC.TConstructor<ISystem>,
+    ): ISystem {
+        const system = this.container_.get(System)
+        if (!this.systems_.has(system)) {
+            throw new Error(`System ${System.name} does not exist`)
         }
-        return this
+        return system
     }
 
-    public getSystem(system: ISystem) {
-        return this.systems_.get(system)
+    public hasSystem(
+        System: IOC.TConstructor<ISystem>,
+    ): boolean {
+        return this.container_.has(System)
+            && this.systems_.has(this.container_.get(System))
     }
 
-    public removeSystem(
-        system: ISystem
-    ): IEngine {
-        this.systems_.delete(system)
-        return this
-    }
-
-    public query(
-        system?: ISystem
+    public queryEntities(
+        System?: IOC.TConstructor<ISystem>,
     ): IEntityQuerySet {
+        const system = System != null ? this.getSystem(System) : null
         return new EntityQuerySet(
             this,
             system == null
                 ? this.entities_.keys()
                 : this.systems_.get(system) ?? [] as Iterable<TEntity>
         )
+    }
+
+    public start(): IEngine {
+        return this
+    }
+
+    public stop(): IEngine {
+        return this
     }
 }
