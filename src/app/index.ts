@@ -207,9 +207,13 @@ class FruitControlerSystem extends ECS.SystemBase<FruitControlerEvents> {
     }
 }
 
+@ECS.Game({
+    systems: [FruitControlerSystem, SnakeControlerSystem, MoveSnakeSystem, RenderSystem],
+})
+class SnakeGame {}
 
 async function createSnake(
-    ecs: ECS.Engine,
+    ecs: ECS.IEngine,
     length: number,
     pos: ECS.maths.TVector2D,
     course: ECS.maths.TVector2D = ECS.maths.Vector2D.north(),
@@ -230,7 +234,11 @@ async function createSnake(
     })
 }
 
-async function createFruit(ecs: ECS.Engine, x: number, y: number) {
+async function createFruit(
+    ecs: ECS.IEngine,
+    x: number,
+    y: number,
+) {
     const entity = await ecs.createEntity()
     const components = ecs.getEntityComponents(entity)
 
@@ -251,26 +259,25 @@ screen.height = HEIGHT*PIXEL_SIZE
 ;(async function() {
     const container = new Container()
 
-    container.set(ECS.EntityFactory, ECS.BasicEntityFactory())
     container.set(Screen, screen)
     container.set(ScreenPixelResolution, PIXEL_SIZE)
     container.set(SnakeSpeed, PIXEL_SIZE)
 
-    const ecs = container.get(ECS.Engine)
+    const engine = ECS.createEngine(SnakeGame, container)
 
     const snakeControler = container.get(SnakeControlerSystem)
     const fruitControler = container.get(FruitControlerSystem)
 
-    createSnake(ecs, 5, { x: 10, y: 10 },)
-    createFruit(ecs, 20, 20)
+    createSnake(engine, 5, { x: 10, y: 10 },)
+    createFruit(engine, 20, 20)
 
     let gameOver = false
 
     fruitControler.events.on("fruitEaten", async entity => {
-        const old_tail = ecs.queryEntities().find(ECS.QueryHasAll(SnakeTail))
+        const old_tail = engine.queryEntities().find(ECS.QueryHasAll(SnakeTail))
 
         if (old_tail != null) {
-            const old_tail_components = ecs.getEntityComponents(old_tail)
+            const old_tail_components = engine.getEntityComponents(old_tail)
 
             old_tail_components.remove(SnakeTail)
 
@@ -279,9 +286,9 @@ screen.height = HEIGHT*PIXEL_SIZE
 
             ECS.maths.Vector2D.wrap(new_tail_position).set(old_tail_position).sub(old_tail_course)
 
-            await createSnake(ecs, 1, new_tail_position, old_tail_course)
+            await createSnake(engine, 1, new_tail_position, old_tail_course)
 
-            ECS.maths.Vector2D.wrap(ecs.getEntityComponents(entity).add(Position)).set({
+            ECS.maths.Vector2D.wrap(engine.getEntityComponents(entity).add(Position)).set({
                 x: Math.floor(Math.random()*WIDTH),
                 y: Math.floor(Math.random()*HEIGHT),
             })
@@ -292,7 +299,7 @@ screen.height = HEIGHT*PIXEL_SIZE
     snakeControler.events.once("wallCollision", () => { gameOver = true })
 
     ;(function loop() {
-        ecs.update()
+        engine.update()
         if (!gameOver) {
             requestAnimationFrame(loop)
         }

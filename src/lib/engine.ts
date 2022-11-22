@@ -7,49 +7,47 @@ import {
 } from "./component"
 
 import {
-    EntityFactory,
     SystemMetadataKey,
 } from "./constants"
-
-import {
-    getSystems,
-} from "./decorators/helpers"
 
 import {
     EntityQuerySet,
 } from "./query"
 
-import type {
+import {
     TEntity,
     IEntityFactory,
     IComponentContainer,
     IEngine,
     IEntityQuerySet,
     ISystem,
+    GameMode,
 } from "./types"
 
+
+function compareSystems(
+    a: IOC.TConstructor<ISystem>,
+    b: IOC.TConstructor<ISystem>,
+): number {
+    const aMetadata = Reflect.getMetadata(SystemMetadataKey, a)
+    const bMetadata = Reflect.getMetadata(SystemMetadataKey, b)
+    return aMetadata.priority - bMetadata.priority
+}
 
 @IOC.Service({
     lifecycle: IOC.ServiceLifecycle.Singleton,
 })
 export class Engine implements IEngine {
     private frame_ = 0
-    private entities_: Map<TEntity, ComponentContainer> = new Map()
-    private systems_: Map<ISystem, Set<TEntity>> = new Map()
+    private mode_ = GameMode.Stopped
 
-    // System management
-    private addSystem_(
-        system: ISystem
-    ): IEngine {
-        this.systems_.set(system, new Set<TEntity>())
-        for (const entity of this.entities_.keys()) {
-            this.checkEntitySystem_(entity, system)
-        }
-        return this
-    }
+    private entities_: Map<TEntity, ComponentContainer> = new Map()
+
+    private systemsEntities_: Map<ISystem, Set<TEntity>> = new Map()
+    private systemsQueue_: Array<ISystem> = []
 
     private checkEntity_(entity: TEntity) {
-        for (const system of this.systems_.keys()) {
+        for (const system of this.systemsEntities_.keys()) {
             this.checkEntitySystem_(entity, system)
         }
     }
@@ -61,7 +59,7 @@ export class Engine implements IEngine {
         const components = this.entities_.get(entity)
         if (components != null) {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const entities = this.systems_.get(system)!
+            const entities = this.systemsEntities_.get(system)!
             const { entities: predicate } = Reflect.getMetadata(SystemMetadataKey, system.constructor)
             if (predicate(components)) {
                 entities.add(entity)
@@ -72,24 +70,34 @@ export class Engine implements IEngine {
     }
 
     constructor(
-        @IOC.Inject(IOC.Container)
         private container_: IOC.Container,
-        @IOC.Inject(EntityFactory)
         private entityFactory_: IEntityFactory,
+        systems: Iterable<IOC.TConstructor<ISystem>>,
     ) {
-        for (const SystemClass of getSystems()) {
-            this.addSystem_(this.container_.get(SystemClass))
+        // Systems are updated in order of priority
+        for (const System of Array.from(new Set(systems)).sort(compareSystems)) {
+            const system = this.container_.get(System)
+            this.systemsEntities_.set(system, new Set<TEntity>())
+            this.systemsQueue_.push(system)
         }
     }
 
-    public get frame() {
+    public get mode(): GameMode {
+        return this.mode_
+    }
+
+    public get frame(): number {
         return this.frame_
     }
 
     public update()
         : IEngine {
-        for (const [system, entities] of this.systems_.entries()) {
-            system.update(entities, this)
+        for (const system of this.systemsQueue_) {
+            // By construction systemsEntities_ has a value for system. So we
+            // can use the non-null assertion operator here.
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const systemsEntities = this.systemsEntities_.get(system)!
+            system.update(systemsEntities, this)
         }
 
         // this.removePostponedEntities_()
@@ -99,13 +107,20 @@ export class Engine implements IEngine {
     }
 
     // Entity management
-    public async createEntity() {
+    public async createEntity(...componentTypes: Array<IOC.TConstructor>) {
         const entity = await this.entityFactory_.create()
-        this.entities_.set(entity, new ComponentContainer(
+        const components = new ComponentContainer(
             entity,
             this.container_,
             () => this.checkEntity_(entity),
-        ))
+        )
+
+        this.entities_.set(entity, components)
+
+        for (const componentType of componentTypes) {
+            components.add(componentType)
+        }
+
         return entity
     }
 
@@ -139,7 +154,7 @@ export class Engine implements IEngine {
         System: IOC.TConstructor<ISystem>,
     ): ISystem {
         const system = this.container_.get(System)
-        if (!this.systems_.has(system)) {
+        if (!this.systemsEntities_.has(system)) {
             throw new Error(`System ${System.name} does not exist`)
         }
         return system
@@ -149,7 +164,7 @@ export class Engine implements IEngine {
         System: IOC.TConstructor<ISystem>,
     ): boolean {
         return this.container_.has(System)
-            && this.systems_.has(this.container_.get(System))
+            && this.systemsEntities_.has(this.container_.get(System))
     }
 
     public queryEntities(
@@ -160,7 +175,7 @@ export class Engine implements IEngine {
             this,
             system == null
                 ? this.entities_.keys()
-                : this.systems_.get(system) ?? [] as Iterable<TEntity>
+                : this.systemsEntities_.get(system) ?? [] as Iterable<TEntity>
         )
     }
 

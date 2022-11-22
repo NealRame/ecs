@@ -1,11 +1,11 @@
-import type {
-    IEntityFactory
+import {
+    type IEntityFactory,
 } from "./types"
 
 export function BasicEntityFactory(): IEntityFactory {
     let id = 0
     return {
-        async create() {
+        async create(): Promise<number> {
             return id++
         },
         async bulkCreate(count: number) {

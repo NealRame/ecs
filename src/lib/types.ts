@@ -51,8 +51,9 @@ export interface ISystem<Events extends TEventMap = Record<string, any>> {
 
 export interface IEngine {
     readonly frame: number
+    readonly mode: GameMode
 
-    createEntity(): Promise<TEntity>
+    createEntity(...componentTypes: Array<TConstructor>): Promise<TEntity>
     createEntities(count: number): Promise<Array<TEntity>>
     hasEntity(entity: TEntity): boolean
     getEntityComponents(entity: TEntity): IComponentContainer
@@ -62,8 +63,18 @@ export interface IEngine {
 
     queryEntities(System?: TConstructor<ISystem>): IEntityQuerySet
 
-    update(): IEngine
-
     start(): IEngine
     stop(): IEngine
+    update(): IEngine
+}
+
+export type IGameMetadata = {
+    entityFactory: () => IEntityFactory
+    systems: Array<TConstructor<ISystem>>
+}
+
+export enum GameMode {
+    Paused = 0,
+    Running = 1,
+    Stopped = 2,
 }
