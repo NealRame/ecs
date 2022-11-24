@@ -3,12 +3,23 @@ import "reflect-metadata"
 import * as IOC from "@nealrame/ts-injector"
 
 import {
+    type IReceiver,
+    type TEmitter,
+    useEvents,
+} from "@nealrame/ts-events"
+
+import {
     ComponentContainer,
 } from "./component"
 
 import {
+    EngineKey,
     SystemMetadataKey,
 } from "./constants"
+
+import {
+    type ISystemMetadata,
+} from "./decorators/system"
 
 import {
     EntityQuerySet,
@@ -24,6 +35,10 @@ import {
     GameMode,
 } from "./types"
 
+type TSystemEvents = [
+    TEmitter<Record<string, unknown>>,
+    IReceiver<Record<string, unknown>>,
+]
 
 function compareSystems(
     a: IOC.TConstructor<ISystem>,
@@ -34,9 +49,23 @@ function compareSystems(
     return aMetadata.priority - bMetadata.priority
 }
 
-@IOC.Service({
-    lifecycle: IOC.ServiceLifecycle.Singleton,
-})
+function connectSystemEvents(
+    system: ISystem,
+): TSystemEvents {
+    const [emit, receiver] = useEvents()
+    const metadata = Reflect.getMetadata(
+        SystemMetadataKey,
+        system.constructor,
+    ) as ISystemMetadata
+    for (const [name, callback] of Object.entries(metadata.events.on)) {
+        receiver.on(name, callback.bind(system))
+    }
+    for (const [name, callback] of Object.entries(metadata.events.once)) {
+        receiver.once(name, callback.bind(system))
+    }
+    return [emit, receiver]
+}
+
 export class Engine implements IEngine {
     private frame_ = 0
     private mode_ = GameMode.Stopped
@@ -44,6 +73,7 @@ export class Engine implements IEngine {
     private entities_: Map<TEntity, ComponentContainer> = new Map()
 
     private systemsEntities_: Map<ISystem, Set<TEntity>> = new Map()
+    private systemsEvents_: Map<ISystem, TSystemEvents> = new Map()
     private systemsQueue_: Array<ISystem> = []
 
     private checkEntity_(entity: TEntity) {
@@ -74,10 +104,12 @@ export class Engine implements IEngine {
         private entityFactory_: IEntityFactory,
         systems: Iterable<IOC.TConstructor<ISystem>>,
     ) {
+        this.container_.set(EngineKey, this)
         // Systems are updated in order of priority
         for (const System of Array.from(new Set(systems)).sort(compareSystems)) {
             const system = this.container_.get(System)
             this.systemsEntities_.set(system, new Set<TEntity>())
+            this.systemsEvents_.set(system, connectSystemEvents(system))
             this.systemsQueue_.push(system)
         }
     }
@@ -97,7 +129,9 @@ export class Engine implements IEngine {
             // can use the non-null assertion operator here.
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const systemsEntities = this.systemsEntities_.get(system)!
-            system.update(systemsEntities, this)
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const [emit] = this.systemsEvents_.get(system)!
+            system.update(systemsEntities, emit)
         }
 
         // this.removePostponedEntities_()

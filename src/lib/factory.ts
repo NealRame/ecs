@@ -29,7 +29,7 @@ export function createEngine(
 
     const engine = new Engine(
         container ?? new Container(),
-        entityFactory(),
+        entityFactory,
         systems,
     )
 

@@ -3,7 +3,6 @@ import type {
 } from "@nealrame/ts-injector"
 
 import type {
-    IReceiver,
     TEmitter,
     TEventMap,
 } from "@nealrame/ts-events"
@@ -43,10 +42,13 @@ export interface IEntityQuerySet {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export interface ISystem<Events extends TEventMap = Record<string, any>> {
-    readonly emit: TEmitter<Events>
-    readonly events: IReceiver<Events>
-    update(entities: Set<TEntity>, ecs: IEngine): void
+export interface ISystem<TEvents extends TEventMap = Record<string, any>> {
+    update(entities: Set<TEntity>, emit: TEmitter<TEvents>): void
+}
+
+export interface ISystemOptions {
+    entities?: TEntityQueryPredicate
+    priority?: number
 }
 
 export interface IEngine {
@@ -69,7 +71,7 @@ export interface IEngine {
 }
 
 export type IGameMetadata = {
-    entityFactory: () => IEntityFactory
+    entityFactory: IEntityFactory
     systems: Array<TConstructor<ISystem>>
 }
 

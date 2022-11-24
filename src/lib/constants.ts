@@ -3,12 +3,12 @@ import type {
 } from "@nealrame/ts-injector"
 
 import type {
-    IEntityFactory,
+    IEngine,
 } from "./types"
 
-export const EntityFactoryKey: Token<IEntityFactory> = Symbol("Entity factory")
-
-export const SystemListKey = Symbol("System list")
-export const SystemMetadataKey = Symbol("System metadata")
+export const EngineKey: Token<IEngine> = Symbol("Engine")
 
 export const GameMetadataKey = Symbol("Game metadata")
+
+export const SystemEventHookKey = Symbol("System event hook")
+export const SystemMetadataKey = Symbol("System metadata")

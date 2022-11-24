@@ -22,7 +22,7 @@ export function Game(metadata: Partial<IGameMetadata>) {
     return (target: TConstructor) => {
         Service({ lifecycle: ServiceLifecycle.Singleton })(target)
         Reflect.defineMetadata(GameMetadataKey, {
-            entityFactory: BasicEntityFactory,
+            entityFactory: BasicEntityFactory(),
             systems: [],
             ...metadata
         }, target)
