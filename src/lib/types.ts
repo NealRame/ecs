@@ -60,7 +60,7 @@ export interface ISystemEventHandler<TEvents extends TEventMap = TSystemDefaultE
 }
 
 export type TSystemEventHandlerMap<TEvents extends TEventMap = TSystemDefaultEventMap> = {
-    [K in TEventKey<TEvents>]: (
+    [K in TEventKey<TEvents>]?: (
         this: ISystemEventHandler<TEvents>,
         value: TEvents[K],
     ) => void
