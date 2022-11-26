@@ -34,11 +34,6 @@ import {
     GameMode,
 } from "./types"
 
-type TSystemEvents = [
-    TEmitter<Record<string, unknown>>,
-    IReceiver<Record<string, unknown>>,
-]
-
 function compareSystems(
     a: IOC.TConstructor<ISystem>,
     b: IOC.TConstructor<ISystem>,
@@ -62,7 +57,7 @@ function *getSystemEventHooks(target: any) {
 function connectSystemEvents(
     system: ISystem,
     engine: IEngine,
-): TSystemEvents {
+): [TEmitter, IReceiver] {
     const [emit, receiver] = useEvents()
     const { events } = Reflect.getMetadata(
         SystemMetadataKey,
@@ -88,7 +83,7 @@ export class Engine implements IEngine {
     private entities_: Map<TEntity, ComponentContainer> = new Map()
 
     private systemsEntities_: Map<ISystem, Set<TEntity>> = new Map()
-    private systemsEvents_: Map<ISystem, TSystemEvents> = new Map()
+    private systemsEvents_: Map<ISystem, [TEmitter, IReceiver]> = new Map()
     private systemsQueue_: Array<ISystem> = []
 
     private checkEntity_(entity: TEntity) {
