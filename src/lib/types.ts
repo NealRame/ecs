@@ -4,6 +4,7 @@ import type {
 
 import type {
     TEmitter,
+    TEventKey,
     TEventMap,
 } from "@nealrame/ts-events"
 
@@ -43,11 +44,21 @@ export interface IEntityQuerySet {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ISystem<TEvents extends TEventMap = Record<string, any>> {
-    update(entities: Set<TEntity>, emit: TEmitter<TEvents>): void
+    update(entities: Set<TEntity>, emit: TEmitter<TEvents>, engine: IEngine): void
 }
 
-export interface ISystemOptions {
+export interface ISystemEventHandler<TEvents extends TEventMap = Record<string, any>> {
+    readonly emit: TEmitter<TEvents>
+    readonly engine: IEngine
+}
+
+export type TSystemEventHandlerMap<TEvents extends TEventMap = Record<string, any>> = {
+    [K in TEventKey<TEvents>]: (this: ISystemEventHandler<TEvents>, value: TEvents[K]) => void
+}
+
+export interface ISystemOptions<TEvents extends TEventMap = Record<string, any>> {
     entities?: TEntityQueryPredicate
+    events?: TSystemEventHandlerMap<TEvents>
     priority?: number
 }
 

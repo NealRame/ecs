@@ -1,14 +1,4 @@
-import type {
-    Token,
-} from "@nealrame/ts-injector"
+export const GameMetadataKey = Symbol("Game metadata key")
 
-import type {
-    IEngine,
-} from "./types"
-
-export const EngineKey: Token<IEngine> = Symbol("Engine")
-
-export const GameMetadataKey = Symbol("Game metadata")
-
-export const SystemEventHookKey = Symbol("System event hook")
-export const SystemMetadataKey = Symbol("System metadata")
+export const SystemMetadataKey = Symbol("System metadata key")
+export const SystemEventHandlerOnceKey = Symbol("System event handler once key")

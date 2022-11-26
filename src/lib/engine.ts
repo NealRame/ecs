@@ -13,7 +13,6 @@ import {
 } from "./component"
 
 import {
-    EngineKey,
     SystemMetadataKey,
 } from "./constants"
 
@@ -26,12 +25,12 @@ import {
 } from "./query"
 
 import {
-    TEntity,
-    IEntityFactory,
-    IComponentContainer,
-    IEngine,
-    IEntityQuerySet,
-    ISystem,
+    type TEntity,
+    type IEntityFactory,
+    type IComponentContainer,
+    type IEngine,
+    type IEntityQuerySet,
+    type ISystem,
     GameMode,
 } from "./types"
 
@@ -49,20 +48,36 @@ function compareSystems(
     return aMetadata.priority - bMetadata.priority
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function *getSystemEventHooks(target: any) {
+    const prototype = Object.getPrototypeOf(target)
+    for (const propName of Object.getOwnPropertyNames(prototype)) {
+        const prop = Reflect.get(prototype, propName)
+        if (typeof prop === "function") {
+            yield [propName, prop]
+        }
+    }
+}
+
 function connectSystemEvents(
     system: ISystem,
+    engine: IEngine,
 ): TSystemEvents {
     const [emit, receiver] = useEvents()
-    const metadata = Reflect.getMetadata(
+    const { events } = Reflect.getMetadata(
         SystemMetadataKey,
         system.constructor,
     ) as ISystemMetadata
-    for (const [name, callback] of Object.entries(metadata.events.on)) {
-        receiver.on(name, callback.bind(system))
+
+    const eventHandlers = Object.create(events, {
+        emit: { value: emit },
+        engine: { value: engine },
+    })
+
+    for (const [name, handler] of getSystemEventHooks(eventHandlers)) {
+        receiver.on(name, handler.bind(eventHandlers))
     }
-    for (const [name, callback] of Object.entries(metadata.events.once)) {
-        receiver.once(name, callback.bind(system))
-    }
+
     return [emit, receiver]
 }
 
@@ -104,12 +119,11 @@ export class Engine implements IEngine {
         private entityFactory_: IEntityFactory,
         systems: Iterable<IOC.TConstructor<ISystem>>,
     ) {
-        this.container_.set(EngineKey, this)
         // Systems are updated in order of priority
         for (const System of Array.from(new Set(systems)).sort(compareSystems)) {
             const system = this.container_.get(System)
             this.systemsEntities_.set(system, new Set<TEntity>())
-            this.systemsEvents_.set(system, connectSystemEvents(system))
+            this.systemsEvents_.set(system, connectSystemEvents(system, this))
             this.systemsQueue_.push(system)
         }
     }
@@ -131,7 +145,7 @@ export class Engine implements IEngine {
             const systemsEntities = this.systemsEntities_.get(system)!
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const [emit] = this.systemsEvents_.get(system)!
-            system.update(systemsEntities, emit)
+            system.update(systemsEntities, emit, this)
         }
 
         // this.removePostponedEntities_()
