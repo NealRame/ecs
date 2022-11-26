@@ -13,6 +13,7 @@ import {
 } from "./component"
 
 import {
+    EngineState,
     SystemMetadataKey,
 } from "./constants"
 
@@ -24,14 +25,13 @@ import {
     EntityQuerySet,
 } from "./query"
 
-import {
-    type TEntity,
-    type IEntityFactory,
-    type IComponentContainer,
-    type IEngine,
-    type IEntityQuerySet,
-    type ISystem,
-    GameMode,
+import type {
+    TEntity,
+    IEntityFactory,
+    IComponentContainer,
+    IEngine,
+    IEntityQuerySet,
+    ISystem,
 } from "./types"
 
 function compareSystems(
@@ -79,7 +79,7 @@ function connectSystemEvents(
 export class Engine implements IEngine {
     private animationFrameId_ = 0
     private frame_ = 0
-    private mode_ = GameMode.Stopped
+    private state_ = EngineState.Stopped
 
     private entities_: Map<TEntity, ComponentContainer> = new Map()
 
@@ -111,7 +111,7 @@ export class Engine implements IEngine {
     }
 
     private loop_() {
-        if (this.mode_ === GameMode.Running) {
+        if (this.state_ === EngineState.Running) {
             this.update()
             this.animationFrameId_ = requestAnimationFrame(this.loop_.bind(this))
         }
@@ -131,8 +131,8 @@ export class Engine implements IEngine {
         }
     }
 
-    public get mode(): GameMode {
-        return this.mode_
+    public get state(): EngineState {
+        return this.state_
     }
 
     public get frame(): number {
@@ -231,13 +231,13 @@ export class Engine implements IEngine {
     }
 
     public start(): IEngine {
-        this.mode_ = GameMode.Running
+        this.state_ = EngineState.Running
         this.loop_()
         return this
     }
 
     public stop(): IEngine {
-        this.mode_ = GameMode.Stopped
+        this.state_ = EngineState.Stopped
         window.cancelAnimationFrame(this.animationFrameId_)
         return this
     }

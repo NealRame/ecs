@@ -9,6 +9,10 @@ import type {
     TEventMap,
 } from "@nealrame/ts-events"
 
+import {
+    EngineState,
+} from "./constants"
+
 export type MapTConstructor<T extends Array<unknown>> = {
     [K in keyof T]: TConstructor<T[K]>
 }
@@ -74,7 +78,7 @@ export interface ISystemOptions<TEvents extends TEventMap = TSystemDefaultEventM
 
 export interface IEngine {
     readonly frame: number
-    readonly mode: GameMode
+    readonly state: EngineState
 
     createEntity(...componentTypes: Array<TConstructor>): Promise<TEntity>
     createEntities(count: number): Promise<Array<TEntity>>
@@ -95,10 +99,4 @@ export interface IEngine {
 export type IGameMetadata = {
     entityFactory: IEntityFactory
     systems: Array<TConstructor<ISystem>>
-}
-
-export enum GameMode {
-    Paused = 0,
-    Running = 1,
-    Stopped = 2,
 }
