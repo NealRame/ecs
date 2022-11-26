@@ -77,6 +77,7 @@ function connectSystemEvents(
 }
 
 export class Engine implements IEngine {
+    private animationFrameId_ = 0
     private frame_ = 0
     private mode_ = GameMode.Stopped
 
@@ -106,6 +107,13 @@ export class Engine implements IEngine {
             } else {
                 entities.delete(entity)
             }
+        }
+    }
+
+    private loop_() {
+        if (this.mode_ === GameMode.Running) {
+            this.update()
+            this.animationFrameId_ = requestAnimationFrame(this.loop_.bind(this))
         }
     }
 
@@ -223,10 +231,14 @@ export class Engine implements IEngine {
     }
 
     public start(): IEngine {
+        this.mode_ = GameMode.Running
+        this.loop_()
         return this
     }
 
     public stop(): IEngine {
+        this.mode_ = GameMode.Stopped
+        window.cancelAnimationFrame(this.animationFrameId_)
         return this
     }
 }

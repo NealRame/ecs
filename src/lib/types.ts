@@ -88,6 +88,7 @@ export interface IEngine {
 
     start(): IEngine
     stop(): IEngine
+
     update(): IEngine
 }
 

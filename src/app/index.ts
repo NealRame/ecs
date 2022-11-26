@@ -6,12 +6,15 @@ import {
 } from "@nealrame/ts-injector"
 
 import * as ECS from "../lib"
+import { Vector2D } from "../lib/maths"
 
 import "./style.css"
 
 const WIDTH = 84
 const HEIGHT = 48
 const PIXEL_SIZE = 5
+const SNAKE_SIZE = 3
+const SNAKE_SPEED = 5
 
 const Screen: Token<HTMLCanvasElement> = Symbol("Screen")
 const ScreenPixelResolution: Token<number> = Symbol("Pixel resolution")
@@ -209,11 +212,11 @@ class SnakeControllerSystem implements ECS.ISystem<SnakeControllerEvents> {
 }
 
 type FruitControlerEvents = {
-    fruitEaten: ECS.TEntity,
+    fruitEaten: void,
 }
 
 const FruitControlerEventHandlers = ECS.defineSystemEventHandler<FruitControlerEvents>({
-    async fruitEaten(fruit: ECS.TEntity) {
+    async fruitEaten() {
         const oldTail = this.engine.queryEntities().find(ECS.QueryHasAll(SnakeTail))
 
         if (oldTail != null) {
@@ -227,11 +230,6 @@ const FruitControlerEventHandlers = ECS.defineSystemEventHandler<FruitControlerE
             ECS.maths.Vector2D.wrap(newTailPosition).set(oldTailPosition).sub(oldTailCourse)
 
             await createSnake(this.engine, 1, newTailPosition, oldTailCourse)
-
-            ECS.maths.Vector2D.wrap(this.engine.getEntityComponents(fruit).add(Position)).set({
-                x: Math.floor(Math.random()*WIDTH),
-                y: Math.floor(Math.random()*HEIGHT),
-            })
         }
     }
 })
@@ -244,6 +242,18 @@ const FruitControlerEventHandlers = ECS.defineSystemEventHandler<FruitControlerE
     events: FruitControlerEventHandlers,
 })
 class FruitControlerSystem implements ECS.ISystem<FruitControlerEvents> {
+    constructor(
+        @Inject(Screen) private screen_: HTMLCanvasElement,
+        @Inject(ScreenPixelResolution) private pixelResolution_: number,
+    ) { }
+
+    private getFruitPosition_() {
+        return {
+            x: Math.floor(Math.random()*this.screen_.width/this.pixelResolution_),
+            y: Math.floor(Math.random()*this.screen_.height/this.pixelResolution_),
+        }
+    }
+
     public update(
         entities: Set<ECS.TEntity>,
         engine: ECS.IEngine,
@@ -254,8 +264,8 @@ class FruitControlerSystem implements ECS.ISystem<FruitControlerEvents> {
             const [p1, p2] = a.map(entity => engine.getEntityComponents(entity).get(Position))
             if (p1.x === p2.x && p1.y === p2.y) {
                 const fruit = a.find(entity => engine.getEntityComponents(entity).has(Fruit))
-                engine.getEntityComponents(fruit).remove(Position)
-                emit("fruitEaten", fruit)
+                Vector2D.wrap(engine.getEntityComponents(fruit).get(Position)).set(this.getFruitPosition_())
+                emit("fruitEaten")
             }
         }
     }
@@ -290,40 +300,32 @@ async function createSnake(
 
 async function createFruit(
     ecs: ECS.IEngine,
-    x: number,
-    y: number,
+    pos: ECS.maths.TVector2D,
 ) {
     const entity = await ecs.createEntity()
     const components = ecs.getEntityComponents(entity)
 
     components.add(Fruit)
 
-    ECS.maths.Vector2D.wrap(components.add(Position)).set({ x, y })
+    ECS.maths.Vector2D.wrap(components.add(Position)).set(pos)
 }
 
-const screen = document.getElementById("screen") as HTMLCanvasElement
+(async function() {
+    const screen = document.getElementById("screen") as HTMLCanvasElement
 
-screen.width = WIDTH*PIXEL_SIZE
-screen.height = HEIGHT*PIXEL_SIZE
+    screen.width = WIDTH*PIXEL_SIZE
+    screen.height = HEIGHT*PIXEL_SIZE
 
-;(async function() {
     const container = new Container()
 
     container.set(Screen, screen)
-    container.set(ScreenPixelResolution, PIXEL_SIZE)
-    container.set(SnakeSpeed, PIXEL_SIZE)
+    container.set(ScreenPixelResolution, SNAKE_SIZE*PIXEL_SIZE)
+    container.set(SnakeSpeed, SNAKE_SPEED)
 
     const engine = ECS.createEngine(SnakeGame, container)
 
     createSnake(engine, 5, { x: 10, y: 10 },)
-    createFruit(engine, 20, 20)
+    createFruit(engine, { x: 5, y: 5 })
 
-    const gameOver = false
-
-    ;(function loop() {
-        engine.update()
-        if (!gameOver) {
-            requestAnimationFrame(loop)
-        }
-    })()
+    engine.start()
 })()
