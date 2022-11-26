@@ -85,7 +85,7 @@ export interface IEngine {
     hasEntity(entity: TEntity): boolean
     getEntityComponents(entity: TEntity): IComponentContainer
 
-    hasSystem(system: TConstructor<ISystem>): boolean
+    hasSystem(System: TConstructor<ISystem>): boolean
     getSystem(System: TConstructor<ISystem>): ISystem
 
     queryEntities(System?: TConstructor<ISystem>): IEntityQuerySet
