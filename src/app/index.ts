@@ -53,7 +53,6 @@ class RenderSystem implements ECS.ISystem {
 
     public async update(
         entities: Set<ECS.TEntity>,
-        emit: TEmitter<{}>,
         engine: ECS.IEngine,
     ) {
         this.context_.fillStyle = "#000"
@@ -90,7 +89,6 @@ class MoveSnakeSystem implements ECS.ISystem {
 
     public update(
         entities: Set<ECS.TEntity>,
-        emit: TEmitter<{}>,
         engine: ECS.IEngine,
     ) {
         if ((engine.frame%this.speed_) === 0) {
@@ -201,8 +199,8 @@ class SnakeControllerSystem implements ECS.ISystem<SnakeControllerEvents> {
 
     public update(
         entities: Set<ECS.TEntity>,
-        emit: TEmitter<SnakeControllerEvents>,
         engine: ECS.IEngine,
+        emit: TEmitter<SnakeControllerEvents>,
     ) {
         const [head, ...tail] = Array.from(entities)
         this.updateCourse_(head, engine)
@@ -248,8 +246,8 @@ const FruitControlerEventHandlers = ECS.defineSystemEventHandler<FruitControlerE
 class FruitControlerSystem implements ECS.ISystem<FruitControlerEvents> {
     public update(
         entities: Set<ECS.TEntity>,
-        emit: TEmitter<FruitControlerEvents>,
         engine: ECS.IEngine,
+        emit: TEmitter<FruitControlerEvents>,
     ) {
         const a = Array.from(entities)
         if (a.length === 2) {

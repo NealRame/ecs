@@ -3,6 +3,7 @@ import type {
 } from "@nealrame/ts-injector"
 
 import type {
+    TDefaultEventMap,
     TEmitter,
     TEventKey,
     TEventMap,
@@ -42,21 +43,30 @@ export interface IEntityQuerySet {
     partition(pred: TEntityQueryPredicate): [Set<TEntity>, Set<TEntity>]
 }
 
+export type TSystemDefaultEventMap = TDefaultEventMap
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export interface ISystem<TEvents extends TEventMap = Record<string, any>> {
-    update(entities: Set<TEntity>, emit: TEmitter<TEvents>, engine: IEngine): void
+export interface ISystem<TEvents extends TEventMap = TSystemDefaultEventMap> {
+    update(
+        entities: Set<TEntity>,
+        engine: IEngine,
+        emit: TEmitter<TEvents>,
+    ): void
 }
 
-export interface ISystemEventHandler<TEvents extends TEventMap = Record<string, any>> {
+export interface ISystemEventHandler<TEvents extends TEventMap = TSystemDefaultEventMap> {
     readonly emit: TEmitter<TEvents>
     readonly engine: IEngine
 }
 
-export type TSystemEventHandlerMap<TEvents extends TEventMap = Record<string, any>> = {
-    [K in TEventKey<TEvents>]: (this: ISystemEventHandler<TEvents>, value: TEvents[K]) => void
+export type TSystemEventHandlerMap<TEvents extends TEventMap = TSystemDefaultEventMap> = {
+    [K in TEventKey<TEvents>]: (
+        this: ISystemEventHandler<TEvents>,
+        value: TEvents[K],
+    ) => void
 }
 
-export interface ISystemOptions<TEvents extends TEventMap = Record<string, any>> {
+export interface ISystemOptions<TEvents extends TEventMap = TSystemDefaultEventMap> {
     entities?: TEntityQueryPredicate
     events?: TSystemEventHandlerMap<TEvents>
     priority?: number

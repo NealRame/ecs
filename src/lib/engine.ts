@@ -140,7 +140,7 @@ export class Engine implements IEngine {
             const systemsEntities = this.systemsEntities_.get(system)!
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const [emit] = this.systemsEvents_.get(system)!
-            system.update(systemsEntities, emit, this)
+            system.update(systemsEntities, this, emit)
         }
 
         // this.removePostponedEntities_()
