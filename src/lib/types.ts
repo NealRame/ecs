@@ -13,7 +13,7 @@ import {
     EngineState,
 } from "./constants"
 
-export type MapTConstructor<T extends Array<unknown>> = {
+export type TConstructorsOf<T extends Array<unknown>> = {
     [K in keyof T]: TConstructor<T[K]>
 }
 
@@ -28,7 +28,7 @@ export interface IComponentContainer {
     add<T>(componentType: TConstructor<T>): T
 
     get<T>(componentType: TConstructor<T>): T
-    getAll<T extends Array<unknown>>(...componentsType: MapTConstructor<T>): T
+    getAll<T extends Array<unknown>>(...componentsType: TConstructorsOf<T>): T
 
     remove(componentType: TConstructor): void
 

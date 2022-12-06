@@ -6,7 +6,7 @@ import {
 import type {
     IComponentContainer,
     TEntity,
-    MapTConstructor,
+    TConstructorsOf,
 } from "./types"
 
 export class ComponentContainer implements IComponentContainer{
@@ -30,7 +30,7 @@ export class ComponentContainer implements IComponentContainer{
     }
 
     public getAll<T extends Array<unknown>>(
-        ...componentsType: MapTConstructor<T>
+        ...componentsType: TConstructorsOf<T>
     ): T {
         return componentsType.map(componentsType => this.get(componentsType)) as T
     }
