@@ -37,3 +37,13 @@ export function System<TEvents extends TEventMap = Record<string, any>>(
         Reflect.defineMetadata(SystemMetadataKey, systemMetadata, target)
     }) as ClassDecorator
 }
+
+export function getSystemPriority(
+    System: TConstructor,
+): number {
+    const metadata = Reflect.getMetadata(SystemMetadataKey, System)
+    if (metadata == null) {
+        throw new Error(`System ${System.name} does not exists.`)
+    }
+    return (metadata as ISystemMetadata).priority
+}

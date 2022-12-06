@@ -19,6 +19,7 @@ import {
 
 import {
     type ISystemMetadata,
+    getSystemPriority,
 } from "./decorators/system"
 
 import {
@@ -36,12 +37,10 @@ import type {
 } from "./types"
 
 function compareSystems(
-    a: IOC.TConstructor<ISystem>,
-    b: IOC.TConstructor<ISystem>,
+    SystemA: IOC.TConstructor<ISystem>,
+    SystemB: IOC.TConstructor<ISystem>,
 ): number {
-    const aMetadata = Reflect.getMetadata(SystemMetadataKey, a)
-    const bMetadata = Reflect.getMetadata(SystemMetadataKey, b)
-    return aMetadata.priority - bMetadata.priority
+    return getSystemPriority(SystemA) - getSystemPriority(SystemB)
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
