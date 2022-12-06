@@ -23,10 +23,11 @@ import {
 
 import {
     EntityQuerySet,
-} from "./query"
+} from "./queryset"
 
 import type {
     TEntity,
+    TEntityQueryPredicate,
     IEntityFactory,
     IComponentContainer,
     IEngine,
@@ -192,7 +193,7 @@ export class Engine implements IEngine {
         return this.entities_.has(entity)
     }
 
-    public getEntityComponents(entity: TEntity)
+    public getComponents(entity: TEntity)
         : IComponentContainer {
         const components = this.entities_.get(entity)
         if (components == null) {
@@ -218,16 +219,25 @@ export class Engine implements IEngine {
             && this.systemsEntities_.has(this.container_.get(System))
     }
 
-    public queryEntities(
-        System?: IOC.TConstructor<ISystem>,
-    ): IEntityQuerySet {
-        const system = System != null ? this.getSystem(System) : null
-        return new EntityQuerySet(
-            this,
-            system == null
-                ? this.entities_.keys()
-                : this.systemsEntities_.get(system) ?? [] as Iterable<TEntity>
-        )
+    public getEntities(): IEntityQuerySet
+    public getEntities(System: ISystem): IEntityQuerySet
+    public getEntities(predicate: TEntityQueryPredicate): IEntityQuerySet
+    public getEntities(arg?: unknown): IEntityQuerySet {
+        if (typeof arg === "function") {
+            // Predicate query
+            const predicate = arg as TEntityQueryPredicate
+            return new EntityQuerySet(this, this.entities_.keys(), predicate)
+        }
+
+        if (arg != null) {
+            // System query
+            const system = arg as ISystem
+            const entities = this.systemsEntities_.get(system) ?? new Set<TEntity>()
+            return new EntityQuerySet(this, entities)
+        }
+
+        // All entities query
+        return new EntityQuerySet(this, this.entities_.keys())
     }
 
     public start(): IEngine {

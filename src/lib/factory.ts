@@ -27,8 +27,10 @@ export function createEngine(
         systems,
     } = Reflect.getMetadata(GameMetadataKey, Game) as IGameMetadata
 
+    const ensuredContainer = container ?? new Container()
+
     const engine = new Engine(
-        container ?? new Container(),
+        ensuredContainer,
         entityFactory,
         systems,
     )

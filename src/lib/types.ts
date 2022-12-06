@@ -42,8 +42,9 @@ export type TEntityQueryPredicate = (componentsContainer: IComponentContainer) =
 export interface IEntityQuerySet {
     [Symbol.iterator](): Iterator<TEntity>
 
+    filter(pred: TEntityQueryPredicate): IEntityQuerySet
+
     find(pred: TEntityQueryPredicate): TEntity | undefined
-    filter(pred: TEntityQueryPredicate): Set<TEntity>
     partition(pred: TEntityQueryPredicate): [Set<TEntity>, Set<TEntity>]
 }
 
@@ -82,18 +83,22 @@ export interface IEngine {
 
     createEntity(...componentTypes: Array<TConstructor>): Promise<TEntity>
     createEntities(count: number): Promise<Array<TEntity>>
+
     hasEntity(entity: TEntity): boolean
-    getEntityComponents(entity: TEntity): IComponentContainer
 
-    hasSystem(System: TConstructor<ISystem>): boolean
+    getEntities(): IEntityQuerySet
+    getEntities(System: ISystem): IEntityQuerySet
+    getEntities(predicate: TEntityQueryPredicate): IEntityQuerySet
+
+    getComponents(entity: TEntity): IComponentContainer
+
     getSystem(System: TConstructor<ISystem>): ISystem
-
-    queryEntities(System?: TConstructor<ISystem>): IEntityQuerySet
+    hasSystem(System: TConstructor<ISystem>): boolean
 
     start(): IEngine
     stop(): IEngine
 
-    update(): IEngine
+    update(): void
 }
 
 export type IGameMetadata = {

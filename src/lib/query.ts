@@ -3,89 +3,65 @@ import {
 } from "@nealrame/ts-injector"
 
 import type {
-    TEntity,
     TEntityQueryPredicate,
-    IEngine,
 } from "./types"
 
-export class EntityQuerySet {
-    constructor(
-        private ecs_: IEngine,
-        private entities_: Iterable<TEntity>,
-    ) { }
-
-    *[Symbol.iterator]() {
-        for (const entity of this.entities_) {
-            yield entity
-        }
-    }
-
-    find(
-        pred: TEntityQueryPredicate
-    ): TEntity | undefined {
-        for (const entity of this.entities_) {
-            if (pred(this.ecs_.getEntityComponents(entity))) {
-                return entity
-            }
-        }
-    }
-
-    filter(
-        pred: TEntityQueryPredicate
-    ): Set<TEntity> {
-        const filtered = new Set<TEntity>()
-        for (const entity of this.entities_) {
-            if (pred(this.ecs_.getEntityComponents(entity))) {
-                filtered.add(entity)
-            }
-        }
-        return filtered
-    }
-
-    partition(
-        pred: TEntityQueryPredicate
-    ): [Set<TEntity>, Set<TEntity>] {
-        const [filtered, rejected] = [new Set<TEntity>(), new Set<TEntity>()]
-        for (const entity of this.entities_) {
-            if (pred(this.ecs_.getEntityComponents(entity))) {
-                filtered.add(entity)
-            } else {
-                rejected.add(entity)
-            }
-        }
-        return [filtered, rejected]
-    }
-}
-
-
-export function QueryAll(): boolean {
+/**
+ * Accept all entities.
+ * @returns `true`
+ */
+export function All(): boolean {
     return true
 }
 
-export function QueryNone(): boolean {
+/**
+ * Reject all entities.
+ * @returns `false`
+ */
+export function None(): boolean {
     return false
 }
 
-export function QueryAnd(
-    ...predicates: Array<TEntityQueryPredicate>
-): TEntityQueryPredicate {
-    return componentsContainer => predicates.every(pred => pred(componentsContainer))
-}
-
-export function QueryOr(
-    ...predicates: Array<TEntityQueryPredicate>
-): TEntityQueryPredicate {
-    return componentsContainer => predicates.some(pred => pred(componentsContainer))
-}
-
-export function QueryHasAll(
+/**
+ * Check if the given entity has all the given components.
+ * @param componentTypes some Components type
+ * @returns a `TEntityQueryPredicate`
+ */
+export function HasAll(
     ...componentTypes: Array<TConstructor>
 ): TEntityQueryPredicate {
     return componentsContainer => componentsContainer.hasAll(componentTypes)
 }
 
-export function QueryHasOne(
+/**
+ * Check if an entity has at least one of the given components.
+ * @param componentTypes some Components type
+ * @returns a `TEntityQueryPredicate`
+ */
+export function HasOne(
     ...componentTypes: Array<TConstructor>
 ): TEntityQueryPredicate {
     return componentsContainer => componentsContainer.hasOne(componentTypes)
+}
+
+/**
+ * Combine multiple predicates with a logical AND.
+ * @param predicates some `TEntityQueryPredicate`s
+ * @returns a `TEntityQueryPredicate`
+ */
+export function And(
+    ...predicates: Array<TEntityQueryPredicate>
+): TEntityQueryPredicate {
+    return componentsContainer => predicates.every(pred => pred(componentsContainer))
+}
+
+/**
+ * Combine multiple predicates with a logical OR.
+ * @param predicates some `TEntityQueryPredicate`s
+ * @returns a `TEntityQueryPredicate`
+ */
+export function Or(
+    ...predicates: Array<TEntityQueryPredicate>
+): TEntityQueryPredicate {
+    return componentsContainer => predicates.some(pred => pred(componentsContainer))
 }
