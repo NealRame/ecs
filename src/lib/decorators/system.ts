@@ -23,10 +23,10 @@ import type {
 
 export type ISystemMetadata = Required<ISystemOptions>
 
-export function System<TEvents extends TEventMap = Record<string, any>>(
-    options: ISystemOptions<TEvents>
+export function System(
+    options: ISystemOptions
 ): ClassDecorator {
-    return ((target: TConstructor<ISystem<TEvents>>) => {
+    return ((target: TConstructor<ISystem>) => {
         const systemMetadata: ISystemMetadata = {
             entities: Query.None,
             events: {},
