@@ -145,10 +145,8 @@ export class Engine implements IEngine {
             // By construction systemsEntities_ has a value for system. So we
             // can use the non-null assertion operator here.
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const systemsEntities = this.systemsEntities_.get(system)!
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const [emit] = this.systemsEvents_.get(system)!
-            system.update(systemsEntities, this, emit)
+            system.update(this, emit)
         }
 
         // this.removePostponedEntities_()

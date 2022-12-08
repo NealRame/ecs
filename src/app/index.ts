@@ -54,7 +54,6 @@ class RenderSystem implements ECS.ISystem {
     }
 
     public async update(
-        entities: Set<ECS.TEntity>,
         engine: ECS.IEngine,
     ) {
         this.context_.fillStyle = "#000"
@@ -63,7 +62,7 @@ class RenderSystem implements ECS.ISystem {
         this.context_.save()
         this.context_.scale(this.pixelResolution_, this.pixelResolution_)
 
-        for (const entity of entities) {
+        for (const entity of engine.getEntities(this)) {
             const components = engine.getComponents(entity)
             const position = components.get(Position)
 
@@ -90,12 +89,11 @@ class MoveSnakeSystem implements ECS.ISystem {
     ) { }
 
     public update(
-        entities: Set<ECS.TEntity>,
         engine: ECS.IEngine,
     ) {
         if ((engine.frame%this.speed_) === 0) {
             // update snake entities position
-            for (const entity of entities) {
+            for (const entity of engine.getEntities(this)) {
                 const [position, course] = engine.getComponents(entity).getAll(Position, Course)
 
                 ECS.maths.Vector2D.wrap(position).add(course)
@@ -103,7 +101,7 @@ class MoveSnakeSystem implements ECS.ISystem {
 
             // update snake entities course
             let previousCourse: ECS.maths.TVector2D | null = null
-            for (const entity of entities) {
+            for (const entity of engine.getEntities(this)) {
                 const course = engine.getComponents(entity).get(Course)
                 const { x, y } = course
 
@@ -200,11 +198,10 @@ class SnakeControllerSystem implements ECS.ISystem<SnakeControllerEvents> {
     }
 
     public update(
-        entities: Set<ECS.TEntity>,
         engine: ECS.IEngine,
         emit: TEmitter<SnakeControllerEvents>,
     ) {
-        const [head, ...tail] = Array.from(entities)
+        const [head, ...tail] = Array.from(engine.getEntities(this))
         this.updateCourse_(head, engine)
         this.checkCollision_(head, tail, emit, engine)
     }
@@ -254,11 +251,10 @@ class FruitControlerSystem implements ECS.ISystem<FruitControlerEvents> {
     }
 
     public update(
-        entities: Set<ECS.TEntity>,
         engine: ECS.IEngine,
         emit: TEmitter<FruitControlerEvents>,
     ) {
-        const a = Array.from(entities)
+        const a = Array.from(engine.getEntities(this))
         if (a.length === 2) {
             const [p1, p2] = a.map(entity => engine.getComponents(entity).get(Position))
             if (p1.x === p2.x && p1.y === p2.y) {
@@ -271,7 +267,12 @@ class FruitControlerSystem implements ECS.ISystem<FruitControlerEvents> {
 }
 
 @ECS.Game({
-    systems: [SnakeControllerSystem, FruitControlerSystem, MoveSnakeSystem, RenderSystem],
+    systems: [
+        RenderSystem,
+        SnakeControllerSystem,
+        FruitControlerSystem,
+        MoveSnakeSystem,
+    ],
 })
 class SnakeGame {}
 

@@ -53,7 +53,6 @@ export type TSystemDefaultEventMap = TDefaultEventMap
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ISystem<TEvents extends TEventMap = TSystemDefaultEventMap> {
     update(
-        entities: Set<TEntity>,
         engine: IEngine,
         emit: TEmitter<TEvents>,
     ): void
