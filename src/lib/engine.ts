@@ -139,22 +139,6 @@ export class Engine implements IEngine {
         return this.frame_
     }
 
-    public update()
-        : IEngine {
-        for (const system of this.systemsQueue_) {
-            // By construction systemsEntities_ has a value for system. So we
-            // can use the non-null assertion operator here.
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const [emit] = this.systemsEvents_.get(system)!
-            system.update(this, emit)
-        }
-
-        // this.removePostponedEntities_()
-        this.frame_ = this.frame_ + 1
-
-        return this
-    }
-
     // Entity management
     public async createEntity(...componentTypes: Array<IOC.TConstructor>) {
         const entity = await this.entityFactory_.create()
@@ -240,12 +224,42 @@ export class Engine implements IEngine {
     public start(): IEngine {
         this.state_ = EngineState.Running
         this.loop_()
+        for (const system of this.systemsQueue_) {
+            // By construction systemsEntities_ has a value for system. So we
+            // can use the non-null assertion operator here.
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const [emit] = this.systemsEvents_.get(system)!
+            system.start?.(this, emit)
+        }
         return this
     }
 
     public stop(): IEngine {
         this.state_ = EngineState.Stopped
         window.cancelAnimationFrame(this.animationFrameId_)
+        for (const system of this.systemsQueue_) {
+            // By construction systemsEntities_ has a value for system. So we
+            // can use the non-null assertion operator here.
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const [emit] = this.systemsEvents_.get(system)!
+            system.stop?.(this, emit)
+        }
+        return this
+    }
+
+    public update()
+        : IEngine {
+        for (const system of this.systemsQueue_) {
+            // By construction systemsEntities_ has a value for system. So we
+            // can use the non-null assertion operator here.
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const [emit] = this.systemsEvents_.get(system)!
+            system.update?.(this, emit)
+        }
+
+        // this.removePostponedEntities_()
+        this.frame_ = this.frame_ + 1
+
         return this
     }
 }
