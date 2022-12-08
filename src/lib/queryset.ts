@@ -15,7 +15,7 @@ export class EntityQuerySet implements IEntityQuerySet {
 
     *[Symbol.iterator]() {
         for (const entity of this.entities_) {
-            if (this.predicate_?.(this.engine_.getComponents(entity)) && true) {
+            if (this.predicate_?.(this.engine_.getComponents(entity)) ?? true) {
                 yield entity
             }
         }
