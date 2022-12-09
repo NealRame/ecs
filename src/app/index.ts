@@ -1,4 +1,3 @@
-import { TEmitter } from "@nealrame/ts-events"
 import {
     type Token,
     Container,
@@ -114,49 +113,118 @@ class MoveSnakeSystem implements ECS.ISystem {
     }
 }
 
-type SnakeControllerEvents = {
-    tailCollision: void,
-    wallCollision: void,
-}
-
-const SnakeControllerEventHandlers = ECS.defineSystemEventHandler<SnakeControllerEvents>({
-    tailCollision() {
-        console.log("tail collision")
-        this.engine.stop()
-    },
-    wallCollision() {
-        console.log("wall collision")
-        this.engine.stop()
-    },
-})
-
 @ECS.System({
-    entities: ECS.query.HasAll(Position, Course),
-    events: SnakeControllerEventHandlers,
+    entities: ECS.query.HasOne(SnakeHead, SnakeTail, Fruit),
 })
-class SnakeControllerSystem implements ECS.ISystem<SnakeControllerEvents> {
-    private course_: ECS.maths.TVector2D | null = null
+class SnakeControllerSystem implements ECS.ISystem {
+    private course_ = ECS.maths.Vector2D.east()
+    private keydownHandler_ = (event: KeyboardEvent) => {
+        switch (event.key) {
+        case "ArrowUp":
+            this.course_ = { x:  0, y: -1 }
+            break
+        case "ArrowDown":
+            this.course_ = { x:  0, y:  1 }
+            break
+        case "ArrowLeft":
+            this.course_ = { x: -1, y:  0 }
+            break
+        case "ArrowRight":
+            this.course_ = { x:  1, y:  0 }
+            break
+        }
+    }
 
-    constructor(
-        @Inject(Screen) private screen_: HTMLCanvasElement,
-        @Inject(ScreenPixelResolution) private pixelResolution_: number,
+    private getFruitPosition_() {
+        return {
+            x: Math.floor(Math.random()*this.screen_.width/this.pixelResolution_),
+            y: Math.floor(Math.random()*this.screen_.height/this.pixelResolution_),
+        }
+    }
+
+    private checkCollision_(
+        head: ECS.TEntity,
+        tail: Array<ECS.TEntity>,
+        engine: ECS.IEngine,
+    ): boolean {
+        const headPosition = engine.getComponents(head).get(Position)
+        const rect = ECS.maths.Rect.fromSize(this.screen_).scale(1/this.pixelResolution_)
+
+        // check collision with canvas border
+        if (!rect.contains(headPosition)) {
+            return true
+        }
+
+        // check collision with snake tail
+        for (const entity of tail) {
+            const tailPosition = engine.getComponents(entity).get(Position)
+            if (ECS.maths.Vector2D.equals(headPosition, tailPosition)) {
+                return true
+            }
+        }
+    }
+
+    private checkFruitEaten_(
+        head: ECS.TEntity,
+        fruit: ECS.TEntity,
+        engine: ECS.IEngine,
+    ): boolean {
+        const headPosition = engine.getComponents(head).get(Position)
+        const fruitPosition = engine.getComponents(fruit).get(Position)
+        if (ECS.maths.Vector2D.equals(headPosition, fruitPosition)) {
+            return true
+        }
+        return false
+    }
+
+    private async createSnake_(
+        engine: ECS.IEngine,
+        length: number,
+        position: ECS.maths.TVector2D,
+        course: ECS.maths.TVector2D,
     ) {
-        window.addEventListener("keydown", (event) => {
-            switch (event.key) {
-            case "ArrowUp":
-                this.course_ = { x:  0, y: -1 }
-                break
-            case "ArrowDown":
-                this.course_ = { x:  0, y:  1 }
-                break
-            case "ArrowLeft":
-                this.course_ = { x: -1, y:  0 }
-                break
-            case "ArrowRight":
-                this.course_ = { x:  1, y:  0 }
-                break
+        const entities = await engine.createEntities(length)
+        entities.forEach((entity, i) => {
+            const components = engine.getComponents(entity)
+
+            ECS.maths.Vector2D.wrap(components.add(Position)).set(position)
+            ECS.maths.Vector2D.wrap(components.add(Course)).set(course)
+            ECS.maths.Vector2D.wrap(position).sub(course)
+
+            if (i === 0 && length > 1) {
+                components.add(SnakeHead)
+            } else if (i === length - 1) {
+                components.add(SnakeTail)
             }
         })
+    }
+
+    private async createFruit_(
+        engine: ECS.IEngine,
+    ) {
+        const entity = await engine.createEntity()
+        const components = engine.getComponents(entity)
+        ECS.maths.Vector2D.wrap(components.add(Position)).set(this.getFruitPosition_())
+        components.add(Fruit)
+    }
+
+    private async growSnake_(
+        engine: ECS.IEngine,
+    ) {
+        const oldTail = engine.getEntities().find(ECS.query.HasAll(SnakeTail))
+
+        if (oldTail != null) {
+            const oldTailComponents = engine.getComponents(oldTail)
+
+            oldTailComponents.remove(SnakeTail)
+
+            const [oldTailPosition, oldTailCourse] = oldTailComponents.getAll(Position, Course)
+            const newTailPosition = { x: 0, y: 0 }
+
+            ECS.maths.Vector2D.wrap(newTailPosition).set(oldTailPosition).sub(oldTailCourse)
+
+            await this.createSnake_(engine, 1, newTailPosition, oldTailCourse)
+        }
     }
 
     private updateCourse_(head: ECS.TEntity, engine: ECS.IEngine) {
@@ -170,145 +238,57 @@ class SnakeControllerSystem implements ECS.ISystem<SnakeControllerEvents> {
         }
     }
 
-    private checkCollision_(
-        head: ECS.TEntity,
-        tail: Array<ECS.TEntity>,
-        emit: TEmitter<SnakeControllerEvents>,
-        engine: ECS.IEngine,
-    ) {
-        if (head != null) {
-            const headPosition = engine.getComponents(head).get(Position)
-            const rect = ECS.maths.Rect.fromSize(this.screen_).scale(1/this.pixelResolution_)
-
-            // check collision with canvas border
-            if (!rect.contains(headPosition)) {
-                emit("wallCollision")
-                return
-            }
-
-            // check collision with snake tail
-            for (const entity of tail) {
-                const tailPosition = engine.getComponents(entity).get(Position)
-                if (ECS.maths.Vector2D.equals(headPosition, tailPosition)) {
-                    emit("tailCollision")
-                    return
-                }
-            }
-        }
+    private updateFruit_(fruit: ECS.TEntity, engine: ECS.IEngine) {
+        const position = engine.getComponents(fruit).get(Position)
+        ECS.maths.Vector2D.wrap(position).set(this.getFruitPosition_())
     }
 
-    public update(
-        engine: ECS.IEngine,
-        emit: TEmitter<SnakeControllerEvents>,
-    ) {
-        const [head, ...tail] = Array.from(engine.getEntities(this))
-        this.updateCourse_(head, engine)
-        this.checkCollision_(head, tail, emit, engine)
-    }
-}
-
-type FruitControlerEvents = {
-    fruitEaten: void,
-}
-
-const FruitControlerEventHandlers = ECS.defineSystemEventHandler<FruitControlerEvents>({
-    async fruitEaten() {
-        const oldTail = this.engine.getEntities().find(ECS.query.HasAll(SnakeTail))
-
-        if (oldTail != null) {
-            const oldTailComponents = this.engine.getComponents(oldTail)
-
-            oldTailComponents.remove(SnakeTail)
-
-            const [oldTailPosition, oldTailCourse] = oldTailComponents.getAll(Position, Course)
-            const newTailPosition = { x: 0, y: 0 }
-
-            ECS.maths.Vector2D.wrap(newTailPosition).set(oldTailPosition).sub(oldTailCourse)
-
-            await createSnake(this.engine, 1, newTailPosition, oldTailCourse)
-        }
-    }
-})
-
-@ECS.System({
-    entities: ECS.query.And(
-        ECS.query.HasAll(Position),
-        ECS.query.HasOne(Fruit, SnakeHead),
-    ),
-    events: FruitControlerEventHandlers,
-})
-class FruitControlerSystem implements ECS.ISystem<FruitControlerEvents> {
     constructor(
         @Inject(Screen) private screen_: HTMLCanvasElement,
         @Inject(ScreenPixelResolution) private pixelResolution_: number,
     ) { }
 
-    private getFruitPosition_() {
-        return {
-            x: Math.floor(Math.random()*this.screen_.width/this.pixelResolution_),
-            y: Math.floor(Math.random()*this.screen_.height/this.pixelResolution_),
-        }
+    public async start(
+        engine: ECS.IEngine,
+    ) {
+        await this.createSnake_(engine, 5, { x: 0, y: 0 }, ECS.maths.Vector2D.east())
+        await this.createFruit_(engine)
+        window.addEventListener("keydown", this.keydownHandler_)
+    }
+
+    public async stop() {
+        window.removeEventListener("keydown", this.keydownHandler_)
     }
 
     public update(
         engine: ECS.IEngine,
-        emit: TEmitter<FruitControlerEvents>,
     ) {
-        const a = Array.from(engine.getEntities(this))
-        if (a.length === 2) {
-            const [p1, p2] = a.map(entity => engine.getComponents(entity).get(Position))
-            if (p1.x === p2.x && p1.y === p2.y) {
-                const fruit = a.find(entity => engine.getComponents(entity).has(Fruit))
-                ECS.maths.Vector2D.wrap(engine.getComponents(fruit).get(Position)).set(this.getFruitPosition_())
-                emit("fruitEaten")
+        const [[head, ...tail], [fruit]] = engine.getEntities(this).partition(ECS.query.HasOne(SnakeHead, SnakeTail))
+        if (head != null) {
+            this.updateCourse_(head, engine)
+            if (this.checkCollision_(head, tail, engine)) {
+                engine.stop()
+                return
+            }
+        }
+        if (head != null && fruit != null) {
+            if (this.checkFruitEaten_(head, fruit, engine)) {
+                this.updateFruit_(fruit, engine)
+                this.growSnake_(engine)
             }
         }
     }
 }
 
+
 @ECS.Game({
     systems: [
         RenderSystem,
         SnakeControllerSystem,
-        FruitControlerSystem,
         MoveSnakeSystem,
     ],
 })
 class SnakeGame {}
-
-async function createSnake(
-    engine: ECS.IEngine,
-    length: number,
-    pos: ECS.maths.TVector2D,
-    course: ECS.maths.TVector2D = ECS.maths.Vector2D.north(),
-) {
-    const entities = await engine.createEntities(length)
-    entities.forEach((entity, i) => {
-        const components = engine.getComponents(entity)
-
-        ECS.maths.Vector2D.wrap(components.add(Position)).set(pos)
-        ECS.maths.Vector2D.wrap(components.add(Course)).set(course)
-        ECS.maths.Vector2D.wrap(pos).sub(course)
-
-        if (i === 0 && length > 1) {
-            components.add(SnakeHead)
-        } else if (i === length - 1) {
-            components.add(SnakeTail)
-        }
-    })
-}
-
-async function createFruit(
-    ecs: ECS.IEngine,
-    pos: ECS.maths.TVector2D,
-) {
-    const entity = await ecs.createEntity()
-    const components = ecs.getComponents(entity)
-
-    components.add(Fruit)
-
-    ECS.maths.Vector2D.wrap(components.add(Position)).set(pos)
-}
 
 (async function() {
     const screen = document.getElementById("screen") as HTMLCanvasElement
@@ -323,9 +303,6 @@ async function createFruit(
     container.set(SnakeSpeed, SNAKE_SPEED)
 
     const engine = ECS.createEngine(SnakeGame, container)
-
-    createSnake(engine, 5, { x: 10, y: 10 },)
-    createFruit(engine, { x: 5, y: 5 })
 
     engine.start()
 })()
