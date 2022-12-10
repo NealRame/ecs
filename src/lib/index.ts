@@ -7,5 +7,4 @@ export * from "./queryset"
 export * from "./system"
 export * from "./types"
 
-export * as maths from "./maths"
 export * as query from "./query"
