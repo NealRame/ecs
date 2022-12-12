@@ -1,5 +1,5 @@
 import type {
-    IEngine,
+    IRegistry,
     IEntityQuerySet,
     TEntity,
     TEntityQueryPredicate,
@@ -8,7 +8,7 @@ import type {
 
 export class EntityQuerySet implements IEntityQuerySet {
     constructor(
-        private engine_: IEngine,
+        private engine_: IRegistry,
         private entities_: Iterable<TEntity>,
         private predicate_?: TEntityQueryPredicate,
     ) { }

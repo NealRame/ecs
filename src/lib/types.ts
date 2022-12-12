@@ -3,15 +3,12 @@ import type {
 } from "@nealrame/ts-injector"
 
 import type {
+    IReceiver,
     TDefaultEventMap,
     TEmitter,
     TEventKey,
     TEventMap,
 } from "@nealrame/ts-events"
-
-import {
-    EngineState,
-} from "./constants"
 
 export type TConstructorsOf<T extends Array<unknown>> = {
     [K in keyof T]: TConstructor<T[K]>
@@ -52,14 +49,13 @@ export type TSystemDefaultEventMap = TDefaultEventMap
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ISystem<TEvents extends TEventMap = TSystemDefaultEventMap> {
-    update?(engine: IEngine, emit: TEmitter<TEvents>): void
-    start?(engine: IEngine, emit: TEmitter<TEvents>): void
-    stop?(engine: IEngine, emit: TEmitter<TEvents>): void
+    update?(engine: IRegistry, emit: TEmitter<TEvents>): void
+    reset?(engine: IRegistry, emit: TEmitter<TEvents>): void
 }
 
 export interface ISystemEventHandler<TEvents extends TEventMap = TSystemDefaultEventMap> {
     readonly emit: TEmitter<TEvents>
-    readonly engine: IEngine
+    readonly engine: IRegistry
 }
 
 export type TSystemEventHandlerMap<TEvents extends TEventMap = TSystemDefaultEventMap> = {
@@ -75,9 +71,8 @@ export interface ISystemOptions<TEvents extends TEventMap = TSystemDefaultEventM
     priority?: number
 }
 
-export interface IEngine {
+export interface IRegistry {
     readonly frame: number
-    readonly state: EngineState
 
     createEntity(...componentTypes: Array<TConstructor>): Promise<TEntity>
     createEntities(count: number): Promise<Array<TEntity>>
@@ -92,11 +87,11 @@ export interface IEngine {
 
     getSystem(System: TConstructor<ISystem>): ISystem
     hasSystem(System: TConstructor<ISystem>): boolean
-
-    start(): IEngine
-    stop(): IEngine
-
+    
+    reset(): void
     update(): void
+
+    events<TEvents extends TEventMap>(System: TConstructor<ISystem<TEvents>>): IReceiver<TEvents>
 }
 
 export type IGameMetadata = {

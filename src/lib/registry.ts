@@ -5,6 +5,7 @@ import * as IOC from "@nealrame/ts-injector"
 import {
     type IReceiver,
     type TEmitter,
+    type TEventMap,
     useEvents,
 } from "@nealrame/ts-events"
 
@@ -13,7 +14,7 @@ import {
 } from "./component"
 
 import {
-    EngineState,
+    GameMetadataKey,
     SystemMetadataKey,
 } from "./constants"
 
@@ -27,13 +28,14 @@ import {
 } from "./queryset"
 
 import type {
-    TEntity,
-    TEntityQueryPredicate,
+    IGameMetadata,
     IEntityFactory,
     IComponentContainer,
-    IEngine,
+    IRegistry,
     IEntityQuerySet,
     ISystem,
+    TEntity,
+    TEntityQueryPredicate,
 } from "./types"
 
 function compareSystems(
@@ -56,7 +58,7 @@ function *getSystemEventHooks(target: any) {
 
 function connectSystemEvents(
     system: ISystem,
-    engine: IEngine,
+    engine: IRegistry,
 ): [TEmitter, IReceiver] {
     const [emit, receiver] = useEvents()
     const { events } = Reflect.getMetadata(
@@ -76,10 +78,8 @@ function connectSystemEvents(
     return [emit, receiver]
 }
 
-export class Engine implements IEngine {
-    private animationFrameId_ = 0
+export class Registry implements IRegistry {
     private frame_ = 0
-    private state_ = EngineState.Stopped
 
     private entities_: Map<TEntity, ComponentContainer> = new Map()
 
@@ -110,10 +110,13 @@ export class Engine implements IEngine {
         }
     }
 
-    private loop_() {
-        if (this.state_ === EngineState.Running) {
-            this.update()
-            this.animationFrameId_ = requestAnimationFrame(this.loop_.bind(this))
+    private *systems_(): Iterable<[ISystem, TEmitter]> {
+        for (const system of this.systemsQueue_) {
+            // By construction systemsEvents_ has a value for system. So we can
+            // safely use the non-null assertion operator.
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const [emit] = this.systemsEvents_.get(system)!
+            yield [system, emit]
         }
     }
 
@@ -129,10 +132,6 @@ export class Engine implements IEngine {
             this.systemsEvents_.set(system, connectSystemEvents(system, this))
             this.systemsQueue_.push(system)
         }
-    }
-
-    public get state(): EngineState {
-        return this.state_
     }
 
     public get frame(): number {
@@ -221,45 +220,47 @@ export class Engine implements IEngine {
         return new EntityQuerySet(this, this.entities_.keys())
     }
 
-    public start(): IEngine {
-        this.state_ = EngineState.Running
-        this.loop_()
-        for (const system of this.systemsQueue_) {
-            // By construction systemsEntities_ has a value for system. So we
-            // can use the non-null assertion operator here.
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const [emit] = this.systemsEvents_.get(system)!
-            system.start?.(this, emit)
+    public reset() {
+        for (const [system, emit] of this.systems_()) {
+            system.reset?.(this, emit)
         }
-        return this
     }
 
-    public stop(): IEngine {
-        this.state_ = EngineState.Stopped
-        window.cancelAnimationFrame(this.animationFrameId_)
-        for (const system of this.systemsQueue_) {
-            // By construction systemsEntities_ has a value for system. So we
-            // can use the non-null assertion operator here.
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const [emit] = this.systemsEvents_.get(system)!
-            system.stop?.(this, emit)
-        }
-        return this
-    }
-
-    public update()
-        : IEngine {
-        for (const system of this.systemsQueue_) {
-            // By construction systemsEntities_ has a value for system. So we
-            // can use the non-null assertion operator here.
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const [emit] = this.systemsEvents_.get(system)!
+    public update() {
+        for (const [system, emit] of this.systems_()) {
             system.update?.(this, emit)
         }
-
         // this.removePostponedEntities_()
         this.frame_ = this.frame_ + 1
-
-        return this
     }
+
+    public events<TEvents extends TEventMap>(
+        System: IOC.TConstructor<ISystem<TEvents>>
+    ): IReceiver<TEvents> {
+        const [, receiver] = this.systemsEvents_.get(this.container_.get(System)) ?? [null, null]
+        if (receiver == null) {
+            throw new Error(`System ${System.name} does not exist`)
+        }
+        return receiver as IReceiver<TEvents>
+    }
+}
+
+export function createRegistry(
+    Game: IOC.TConstructor,
+    container?: IOC.Container,
+): IRegistry {
+    const {
+        entityFactory,
+        systems,
+    } = Reflect.getMetadata(GameMetadataKey, Game) as IGameMetadata
+
+    const ensuredContainer = container ?? new IOC.Container()
+
+    const engine = new Registry(
+        ensuredContainer,
+        entityFactory,
+        systems,
+    )
+
+    return engine
 }

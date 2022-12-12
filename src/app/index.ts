@@ -54,7 +54,7 @@ class RenderSystem implements ECS.ISystem {
     }
 
     public async update(
-        engine: ECS.IEngine,
+        registry: ECS.IRegistry,
     ) {
         this.context_.fillStyle = "#000"
         this.context_.fillRect(0, 0, this.screen_.width, this.screen_.height)
@@ -62,8 +62,8 @@ class RenderSystem implements ECS.ISystem {
         this.context_.save()
         this.context_.scale(this.pixelResolution_, this.pixelResolution_)
 
-        for (const entity of engine.getEntities(this)) {
-            const components = engine.getComponents(entity)
+        for (const entity of registry.getEntities(this)) {
+            const components = registry.getComponents(entity)
             const position = components.get(Position)
 
             if (components.has(Fruit)) {
@@ -89,20 +89,20 @@ class MoveSnakeSystem implements ECS.ISystem {
     ) { }
 
     public update(
-        engine: ECS.IEngine,
+        registry: ECS.IRegistry,
     ) {
-        if ((engine.frame%this.speed_) === 0) {
+        if ((registry.frame%this.speed_) === 0) {
             // update snake entities position
-            for (const entity of engine.getEntities(this)) {
-                const [position, course] = engine.getComponents(entity).getAll(Position, Course)
+            for (const entity of registry.getEntities(this)) {
+                const [position, course] = registry.getComponents(entity).getAll(Position, Course)
 
                 maths.Vector2D.wrap(position).add(course)
             }
 
             // update snake entities course
             let previousCourse: maths.TVector2D | null = null
-            for (const entity of engine.getEntities(this)) {
-                const course = engine.getComponents(entity).get(Course)
+            for (const entity of registry.getEntities(this)) {
+                const course = registry.getComponents(entity).get(Course)
                 const { x, y } = course
 
                 if (previousCourse !== null) {
@@ -146,9 +146,9 @@ class SnakeControllerSystem implements ECS.ISystem {
     private checkCollision_(
         head: ECS.TEntity,
         tail: Array<ECS.TEntity>,
-        engine: ECS.IEngine,
+        registry: ECS.IRegistry,
     ): boolean {
-        const headPosition = engine.getComponents(head).get(Position)
+        const headPosition = registry.getComponents(head).get(Position)
         const rect = maths.Rect.fromSize(this.screen_).scale(1/this.pixelResolution_)
 
         // check collision with canvas border
@@ -158,7 +158,7 @@ class SnakeControllerSystem implements ECS.ISystem {
 
         // check collision with snake tail
         for (const entity of tail) {
-            const tailPosition = engine.getComponents(entity).get(Position)
+            const tailPosition = registry.getComponents(entity).get(Position)
             if (maths.Vector2D.equals(headPosition, tailPosition)) {
                 return true
             }
@@ -168,10 +168,10 @@ class SnakeControllerSystem implements ECS.ISystem {
     private checkFruitEaten_(
         head: ECS.TEntity,
         fruit: ECS.TEntity,
-        engine: ECS.IEngine,
+        registry: ECS.IRegistry,
     ): boolean {
-        const headPosition = engine.getComponents(head).get(Position)
-        const fruitPosition = engine.getComponents(fruit).get(Position)
+        const headPosition = registry.getComponents(head).get(Position)
+        const fruitPosition = registry.getComponents(fruit).get(Position)
         if (maths.Vector2D.equals(headPosition, fruitPosition)) {
             return true
         }
@@ -179,14 +179,14 @@ class SnakeControllerSystem implements ECS.ISystem {
     }
 
     private async createSnake_(
-        engine: ECS.IEngine,
+        registry: ECS.IRegistry,
         length: number,
         position: maths.TVector2D,
         course: maths.TVector2D,
     ) {
-        const entities = await engine.createEntities(length)
+        const entities = await registry.createEntities(length)
         entities.forEach((entity, i) => {
-            const components = engine.getComponents(entity)
+            const components = registry.getComponents(entity)
 
             maths.Vector2D.wrap(components.add(Position)).set(position)
             maths.Vector2D.wrap(components.add(Course)).set(course)
@@ -201,21 +201,21 @@ class SnakeControllerSystem implements ECS.ISystem {
     }
 
     private async createFruit_(
-        engine: ECS.IEngine,
+        registry: ECS.IRegistry,
     ) {
-        const entity = await engine.createEntity()
-        const components = engine.getComponents(entity)
+        const entity = await registry.createEntity()
+        const components = registry.getComponents(entity)
         maths.Vector2D.wrap(components.add(Position)).set(this.getFruitPosition_())
         components.add(Fruit)
     }
 
     private async growSnake_(
-        engine: ECS.IEngine,
+        registry: ECS.IRegistry,
     ) {
-        const oldTail = engine.getEntities().find(ECS.query.HasAll(SnakeTail))
+        const oldTail = registry.getEntities().find(ECS.query.HasAll(SnakeTail))
 
         if (oldTail != null) {
-            const oldTailComponents = engine.getComponents(oldTail)
+            const oldTailComponents = registry.getComponents(oldTail)
 
             oldTailComponents.remove(SnakeTail)
 
@@ -224,13 +224,13 @@ class SnakeControllerSystem implements ECS.ISystem {
 
             maths.Vector2D.wrap(newTailPosition).set(oldTailPosition).sub(oldTailCourse)
 
-            await this.createSnake_(engine, 1, newTailPosition, oldTailCourse)
+            await this.createSnake_(registry, 1, newTailPosition, oldTailCourse)
         }
     }
 
-    private updateCourse_(head: ECS.TEntity, engine: ECS.IEngine) {
+    private updateCourse_(head: ECS.TEntity, registry: ECS.IRegistry) {
         if (this.course_ != null && head != null) {
-            const course = engine.getComponents(head).get(Course)
+            const course = registry.getComponents(head).get(Course)
             if (maths.Vector2D.dot(this.course_, course) === 0) {
                 course.x = this.course_.x
                 course.y = this.course_.y
@@ -239,8 +239,8 @@ class SnakeControllerSystem implements ECS.ISystem {
         }
     }
 
-    private updateFruit_(fruit: ECS.TEntity, engine: ECS.IEngine) {
-        const position = engine.getComponents(fruit).get(Position)
+    private updateFruit_(fruit: ECS.TEntity, registry: ECS.IRegistry) {
+        const position = registry.getComponents(fruit).get(Position)
         maths.Vector2D.wrap(position).set(this.getFruitPosition_())
     }
 
@@ -250,10 +250,10 @@ class SnakeControllerSystem implements ECS.ISystem {
     ) { }
 
     public async start(
-        engine: ECS.IEngine,
+        registry: ECS.IRegistry,
     ) {
-        await this.createSnake_(engine, 5, { x: 0, y: 0 }, maths.Vector2D.east())
-        await this.createFruit_(engine)
+        await this.createSnake_(registry, 5, { x: 0, y: 0 }, maths.Vector2D.east())
+        await this.createFruit_(registry)
         window.addEventListener("keydown", this.keydownHandler_)
     }
 
@@ -262,20 +262,20 @@ class SnakeControllerSystem implements ECS.ISystem {
     }
 
     public update(
-        engine: ECS.IEngine,
+        registry: ECS.IRegistry,
     ) {
-        const [[head, ...tail], [fruit]] = engine.getEntities(this).partition(ECS.query.HasOne(SnakeHead, SnakeTail))
+        const [[head, ...tail], [fruit]] = registry.getEntities(this).partition(ECS.query.HasOne(SnakeHead, SnakeTail))
         if (head != null) {
-            this.updateCourse_(head, engine)
-            if (this.checkCollision_(head, tail, engine)) {
-                engine.stop()
+            this.updateCourse_(head, registry)
+            if (this.checkCollision_(head, tail, registry)) {
+                registry.stop()
                 return
             }
         }
         if (head != null && fruit != null) {
-            if (this.checkFruitEaten_(head, fruit, engine)) {
-                this.updateFruit_(fruit, engine)
-                this.growSnake_(engine)
+            if (this.checkFruitEaten_(head, fruit, registry)) {
+                this.updateFruit_(fruit, registry)
+                this.growSnake_(registry)
             }
         }
     }
@@ -303,7 +303,9 @@ class SnakeGame {}
     container.set(ScreenPixelResolution, SNAKE_SIZE*PIXEL_SIZE)
     container.set(SnakeSpeed, SNAKE_SPEED)
 
-    const engine = ECS.createEngine(SnakeGame, container)
+    const registry = ECS.createRegistry(SnakeGame, container)
 
-    engine.start()
+
+
+
 })()
