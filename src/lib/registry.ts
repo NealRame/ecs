@@ -224,6 +224,7 @@ export class Registry implements IRegistry {
         for (const [system, emit] of this.systems_()) {
             system.reset?.(this, emit)
         }
+        this.frame_ = 0
     }
 
     public update() {
