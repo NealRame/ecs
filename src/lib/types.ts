@@ -87,7 +87,7 @@ export interface IRegistry {
 
     getSystem(System: TConstructor<ISystem>): ISystem
     hasSystem(System: TConstructor<ISystem>): boolean
-    
+
     reset(): void
     update(): void
 
