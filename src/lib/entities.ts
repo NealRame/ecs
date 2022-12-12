@@ -5,10 +5,10 @@ import {
 export function BasicEntityFactory(): IEntityFactory {
     let id = 0
     return {
-        async create(): Promise<number> {
+        async create() {
             return id++
         },
-        async bulkCreate(count: number) {
+        async createMultiple(count: number) {
             const start = id
             id = id + count
             return Array.from({ length: count }, (_, i) => start + i)

@@ -1,9 +1,8 @@
 export * from "./constants"
-export * from "./decorators"
-export * from "./factory"
-export * from "./engine"
-export * from "./entity"
+export * from "./component"
+export * from "./entities"
 export * from "./queryset"
+export * from "./registry"
 export * from "./system"
 export * from "./types"
 

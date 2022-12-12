@@ -1,10 +1,9 @@
-export enum EngineState {
-    Paused = 0,
-    Running = 1,
-    Stopped = 2,
-}
+import {
+    type Token,
+} from "@nealrame/ts-injector"
 
-export const GameMetadataKey = Symbol("Game metadata key")
+import {
+    type IEntityFactory,
+} from "./types"
 
-export const SystemMetadataKey = Symbol("System metadata key")
-export const SystemEventHandlerOnceKey = Symbol("System event handler once key")
+export const EntityFactory: Token<IEntityFactory> = Symbol("EntityFactory")
