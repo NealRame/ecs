@@ -1,3 +1,3 @@
 export * from "./component"
-export * from "./game"
+export * from "./engine"
 export * from "./system"

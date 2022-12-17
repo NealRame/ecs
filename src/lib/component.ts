@@ -35,11 +35,19 @@ export class ComponentContainer implements IComponentContainer{
         return componentsType.map(componentsType => this.get(componentsType)) as T
     }
 
-    public add<T>(
-        componentType: TConstructor<T>,
-    ): T {
-        const component = this.container_.get(componentType)
-        this.components_.set(componentType, component)
+    public add<T>(component: T): T
+    public add<T>(componentType: TConstructor<T>): T
+    public add<T>(arg: T | TConstructor<T>): T {
+        let ComponentType: TConstructor<T>
+        let component: T
+        if (typeof arg === "function") {
+            ComponentType = arg as TConstructor<T>
+            component = this.container_.get(ComponentType)
+        } else {
+            ComponentType = (arg as object).constructor as TConstructor<T>
+            component = arg as T
+        }
+        this.components_.set(ComponentType, component)
         this.updateComponentsCallback_()
         return component
     }
