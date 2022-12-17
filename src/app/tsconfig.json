@@ -13,8 +13,9 @@
   },
   "exclude": [
     "node_modules",
+    "**/__*.ts",
     "**/*.spec.ts",
-    "**/*.test.ts"
+    "**/*.test.ts",
   ],
   "include": [
     "./**/*.ts",
