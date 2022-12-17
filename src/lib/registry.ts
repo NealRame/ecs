@@ -14,7 +14,7 @@ import {
 } from "./component"
 
 import {
-    GameMetadataKey,
+    EntityFactory,
     SystemMetadataKey,
 } from "./constants"
 
@@ -28,7 +28,6 @@ import {
 } from "./queryset"
 
 import type {
-    IGameMetadata,
     IEntityFactory,
     IComponentContainer,
     IRegistry,
@@ -37,6 +36,7 @@ import type {
     TEntity,
     TEntityQueryPredicate,
 } from "./types"
+import { Inject } from "@nealrame/ts-injector"
 
 function compareSystems(
     SystemA: IOC.TConstructor<ISystem>,
@@ -79,13 +79,26 @@ function connectSystemEvents(
 }
 
 export class Registry implements IRegistry {
-    private frame_ = 0
-
     private entities_: Map<TEntity, ComponentContainer> = new Map()
 
     private systemsEntities_: Map<ISystem, Set<TEntity>> = new Map()
     private systemsEvents_: Map<ISystem, [TEmitter, IReceiver]> = new Map()
     private systemsQueue_: Array<ISystem> = []
+
+    private registerEntity_(
+        entity: TEntity,
+        componentTypes: Array<IOC.TConstructor>,
+    ): void {
+        const components = new ComponentContainer(
+            entity,
+            this.container_,
+            () => this.checkEntity_(entity),
+        )
+        this.entities_.set(entity, components)
+        for (const componentType of componentTypes) {
+            components.add(componentType)
+        }
+    }
 
     private checkEntity_(entity: TEntity) {
         for (const system of this.systemsEntities_.keys()) {
@@ -121,8 +134,8 @@ export class Registry implements IRegistry {
     }
 
     constructor(
-        private container_: IOC.Container,
-        private entityFactory_: IEntityFactory,
+        @Inject(IOC.Container) private container_: IOC.Container,
+        @Inject(EntityFactory) private entityFactory_: IEntityFactory,
         systems: Iterable<IOC.TConstructor<ISystem>>,
     ) {
         // Systems are updated in order of priority
@@ -134,36 +147,22 @@ export class Registry implements IRegistry {
         }
     }
 
-    public get frame(): number {
-        return this.frame_
-    }
-
     // Entity management
-    public async createEntity(...componentTypes: Array<IOC.TConstructor>) {
-        const entity = await this.entityFactory_.create()
-        const components = new ComponentContainer(
-            entity,
-            this.container_,
-            () => this.checkEntity_(entity),
-        )
-
-        this.entities_.set(entity, components)
-
-        for (const componentType of componentTypes) {
-            components.add(componentType)
-        }
-
+    public createEntity(
+        ...componentTypes: Array<IOC.TConstructor>
+    ) {
+        const entity = this.entityFactory_.create()
+        this.registerEntity_(entity, componentTypes)
         return entity
     }
 
-    public async createEntities(count: number) {
-        const entities = await this.entityFactory_.bulkCreate(count)
+    public createEntities(
+        count: number,
+        ...componentTypes: Array<IOC.TConstructor>
+    ) {
+        const entities = this.entityFactory_.createMultiple(count)
         for (const entity of entities) {
-            this.entities_.set(entity, new ComponentContainer(
-                entity,
-                this.container_,
-                () => this.checkEntity_(entity),
-            ))
+            this.registerEntity_(entity, componentTypes)
         }
         return entities
     }
@@ -180,6 +179,39 @@ export class Registry implements IRegistry {
             throw new Error(`Entity ${entity} does not exist`)
         }
         return components
+    }
+
+    public get entities(): IEntityQuerySet {
+        return new EntityQuerySet(this, this.entities_.keys())
+    }
+
+    public getEntitiesFilterBy(
+        predicate: TEntityQueryPredicate,
+    ): IEntityQuerySet {
+        return new EntityQuerySet(this, this.entities_.keys(), predicate)
+    }
+
+    public getEntitiesOfSystem(
+        system: ISystem,
+    ): IEntityQuerySet {
+        return new EntityQuerySet(this, this.systemsEntities_.get(system) ?? new Set<TEntity>())
+    }
+
+    public get systems()
+        : Iterable<ISystem> {
+        return this.systemsQueue_[Symbol.iterator]()
+    }
+
+    public registerSystem(
+        System: IOC.TConstructor<ISystem>,
+    ): ISystem {
+        const system = this.container_.get(System)
+        if (!this.systemsEntities_.has(system)) {
+            this.systemsEntities_.set(system, new Set<TEntity>())
+            this.systemsEvents_.set(system, connectSystemEvents(system, this))
+            this.systemsQueue_.push(system)
+        }
+        return system
     }
 
     public getSystem(
@@ -199,32 +231,10 @@ export class Registry implements IRegistry {
             && this.systemsEntities_.has(this.container_.get(System))
     }
 
-    public getEntities(): IEntityQuerySet
-    public getEntities(System: ISystem): IEntityQuerySet
-    public getEntities(predicate: TEntityQueryPredicate): IEntityQuerySet
-    public getEntities(arg?: unknown): IEntityQuerySet {
-        if (typeof arg === "function") {
-            // Predicate query
-            const predicate = arg as TEntityQueryPredicate
-            return new EntityQuerySet(this, this.entities_.keys(), predicate)
-        }
-
-        if (arg != null) {
-            // System query
-            const system = arg as ISystem
-            const entities = this.systemsEntities_.get(system) ?? new Set<TEntity>()
-            return new EntityQuerySet(this, entities)
-        }
-
-        // All entities query
-        return new EntityQuerySet(this, this.entities_.keys())
-    }
-
     public reset() {
         for (const [system, emit] of this.systems_()) {
             system.reset?.(this, emit)
         }
-        this.frame_ = 0
     }
 
     public update() {
@@ -232,7 +242,6 @@ export class Registry implements IRegistry {
             system.update?.(this, emit)
         }
         // this.removePostponedEntities_()
-        this.frame_ = this.frame_ + 1
     }
 
     public events<TEvents extends TEventMap>(
@@ -244,24 +253,4 @@ export class Registry implements IRegistry {
         }
         return receiver as IReceiver<TEvents>
     }
-}
-
-export function createRegistry(
-    Game: IOC.TConstructor,
-    container?: IOC.Container,
-): IRegistry {
-    const {
-        entityFactory,
-        systems,
-    } = Reflect.getMetadata(GameMetadataKey, Game) as IGameMetadata
-
-    const ensuredContainer = container ?? new IOC.Container()
-
-    const engine = new Registry(
-        ensuredContainer,
-        entityFactory,
-        systems,
-    )
-
-    return engine
 }

@@ -6,10 +6,6 @@ import {
     TConstructor,
 } from "@nealrame/ts-injector"
 
-import type {
-    TEventMap,
-} from "@nealrame/ts-events"
-
 import {
     SystemMetadataKey,
 } from "../constants"

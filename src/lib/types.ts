@@ -17,11 +17,12 @@ export type TConstructorsOf<T extends Array<unknown>> = {
 export type TEntity = number
 
 export interface IEntityFactory {
-    create(): Promise<TEntity>
-    bulkCreate(count: number): Promise<Array<TEntity>>
+    create(): TEntity
+    createMultiple(count: number): Array<TEntity>
 }
 
 export interface IComponentContainer {
+    add<T>(component: T): T
     add<T>(componentType: TConstructor<T>): T
 
     get<T>(componentType: TConstructor<T>): T
@@ -49,8 +50,8 @@ export type TSystemDefaultEventMap = TDefaultEventMap
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ISystem<TEvents extends TEventMap = TSystemDefaultEventMap> {
-    update?(engine: IRegistry, emit: TEmitter<TEvents>): void
-    reset?(engine: IRegistry, emit: TEmitter<TEvents>): void
+    update?(registry: IRegistry, emit: TEmitter<TEvents>): void
+    reset?(registry: IRegistry, emit: TEmitter<TEvents>): void
 }
 
 export interface ISystemEventHandler<TEvents extends TEventMap = TSystemDefaultEventMap> {
@@ -72,21 +73,22 @@ export interface ISystemOptions<TEvents extends TEventMap = TSystemDefaultEventM
 }
 
 export interface IRegistry {
-    readonly frame: number
-
-    createEntity(...componentTypes: Array<TConstructor>): Promise<TEntity>
-    createEntities(count: number): Promise<Array<TEntity>>
+    createEntity(...componentTypes: Array<TConstructor>): TEntity
+    createEntities(count: number, ...componentTypes: Array<TConstructor>): Array<TEntity>
 
     hasEntity(entity: TEntity): boolean
 
-    getEntities(): IEntityQuerySet
-    getEntities(System: ISystem): IEntityQuerySet
-    getEntities(predicate: TEntityQueryPredicate): IEntityQuerySet
+    readonly entities: IEntityQuerySet
+    getEntitiesFilterBy(predicate: TEntityQueryPredicate): IEntityQuerySet
+    getEntitiesOfSystem(System: ISystem): IEntityQuerySet
 
     getComponents(entity: TEntity): IComponentContainer
 
+    readonly systems: Iterable<ISystem>
+    registerSystem(System: TConstructor<ISystem>): ISystem
     getSystem(System: TConstructor<ISystem>): ISystem
     hasSystem(System: TConstructor<ISystem>): boolean
+
 
     reset(): void
     update(): void
@@ -94,7 +96,21 @@ export interface IRegistry {
     events<TEvents extends TEventMap>(System: TConstructor<ISystem<TEvents>>): IReceiver<TEvents>
 }
 
-export type IGameMetadata = {
-    entityFactory: IEntityFactory
-    systems: Array<TConstructor<ISystem>>
+export type TEngineMetadata = {
+    EntityFactory: IEntityFactory
+    Systems: Array<TConstructor<ISystem>>
+}
+
+export type TEngineData = {
+    frame: number
+    running: boolean
+}
+
+export interface IEngine<RootData extends TEngineData = TEngineData> {
+    readonly registry: IRegistry,
+    readonly rootEntity: TEntity,
+    readonly rootComponent: RootData,
+    start(): void
+    stop(): void
+    reset(): void
 }
