@@ -1,26 +1,13 @@
 import * as IOC from "@nealrame/ts-injector"
-import { Container, Inject } from "@nealrame/ts-injector"
-
-import {
-    type IReceiver,
-    type TEmitter,
-} from "@nealrame/ts-events"
 
 import {
     EntityFactory,
-    RootComponentKey,
-    RootEntityKey,
 } from "./constants"
 
 import {
     getEngineMetadata,
     getSystemPriority,
-    System,
 } from "./decorators"
-
-import {
-    BasicEntityFactory,
-} from "./entity"
 
 import {
     Registry,
@@ -28,8 +15,10 @@ import {
 
 import type {
     IEngine,
+    IRegistry,
     ISystem,
     TEngineData,
+    TEntity,
 } from "./types"
 
 function compareSystems(
@@ -39,63 +28,76 @@ function compareSystems(
     return getSystemPriority(SystemA) - getSystemPriority(SystemB)
 }
 
+class Engine<TRootComponent extends TEngineData> {
+    private container_: IOC.Container
+    private requestAnimationFrameId_ = 0
+    private registry_: IRegistry
+    private rootEntity_: TEntity
+    private rootComponent_: TRootComponent
+
+    animationFrameCallback_ = () => {
+        if (this.rootComponent_.running) {
+            this.registry_.update()
+            this.rootComponent_.frame += 1
+            this.requestAnimationFrameId_ =
+                global.requestAnimationFrame(this.animationFrameCallback_)
+        }
+    }
+
+    constructor(RootComponent: IOC.TConstructor<TRootComponent>) {
+        this.container_ = new IOC.Container()
+
+        const metadata = getEngineMetadata(RootComponent)
+
+        this.container_.set(EntityFactory, metadata.EntityFactory)
+        this.registry_ = this.container_.get(Registry)
+
+        this.rootEntity_ = this.registry_.createEntity()
+        this.rootComponent_ = this.container_.get(RootComponent)
+
+        this.registry_.getComponents(this.rootEntity_).add(this.rootComponent_)
+
+        for (const System of Array.from(new Set(metadata.Systems)).sort(compareSystems)) {
+            this.registry_.registerSystem(System)
+        }
+    }
+
+    get registry() {
+        return this.registry_
+    }
+
+    get rootEntity() {
+        return this.rootEntity_
+    }
+
+    get rootComponent() {
+        return this.rootComponent_
+    }
+
+    start() {
+        if (!this.rootComponent_.running) {
+            this.rootComponent_.running = true
+            this.animationFrameCallback_()
+        }
+    }
+
+    stop() {
+        if (this.rootComponent_.running) {
+            this.rootComponent_.running = false
+            global.cancelAnimationFrame(this.requestAnimationFrameId_)
+        }
+    }
+
+    reset() {
+        this.requestAnimationFrameId_ = 0
+        this.rootComponent_.frame = 0
+        this.rootComponent_.running = false
+        this.registry_.reset()
+    }
+}
+
 export function createEngine<RootData extends TEngineData = TEngineData>(
     RootComponent: IOC.TConstructor<RootData>,
 ): IEngine<RootData> {
-    let requestAnimationFrameId = 0
-
-    const container = new IOC.Container()
-
-    const metadata = getEngineMetadata(RootComponent)
-
-    container.set(EntityFactory, metadata.EntityFactory || BasicEntityFactory)
-
-    const registry = container.get(Registry)
-    const rootEntity = registry.createEntity()
-    const rootComponent = container.get(RootComponentKey) as RootData
-
-    const animationFrameCallback = () => {
-        if (rootComponent.running) {
-            registry.update()
-            rootComponent.frame += 1
-            requestAnimationFrameId =
-                global.requestAnimationFrame(animationFrameCallback)
-        }
-    }
-
-    registry.getComponents(rootEntity).add(rootComponent)
-    for (const System of Array.from(new Set(metadata.Systems)).sort(compareSystems)) {
-        registry.registerSystem(System)
-    }
-
-    return {
-        get rootEntity() {
-            return rootEntity
-        },
-        get rootComponent() {
-            return rootComponent
-        },
-        get registry() {
-            return registry
-        },
-        start() {
-            if (!rootComponent.running) {
-                rootComponent.running = true
-                requestAnimationFrameId =
-                    global.requestAnimationFrame(animationFrameCallback)
-            }
-        },
-        stop() {
-            if (rootComponent.running) {
-                rootComponent.running = false
-                global.cancelAnimationFrame(requestAnimationFrameId)
-            }
-        },
-        reset() {
-            requestAnimationFrameId = 0
-            rootComponent.frame = 0
-            rootComponent.running = false
-            registry.reset()
-        }
-    }
+    return new Engine(RootComponent)
 }
