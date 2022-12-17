@@ -20,7 +20,6 @@ import {
 
 import {
     type ISystemMetadata,
-    getSystemPriority,
 } from "./decorators/system"
 
 import {
@@ -37,13 +36,6 @@ import type {
     TEntityQueryPredicate,
 } from "./types"
 import { Inject } from "@nealrame/ts-injector"
-
-function compareSystems(
-    SystemA: IOC.TConstructor<ISystem>,
-    SystemB: IOC.TConstructor<ISystem>,
-): number {
-    return getSystemPriority(SystemA) - getSystemPriority(SystemB)
-}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function *getSystemEventHooks(target: any) {
@@ -136,16 +128,7 @@ export class Registry implements IRegistry {
     constructor(
         @Inject(IOC.Container) private container_: IOC.Container,
         @Inject(EntityFactory) private entityFactory_: IEntityFactory,
-        systems: Iterable<IOC.TConstructor<ISystem>>,
-    ) {
-        // Systems are updated in order of priority
-        for (const System of Array.from(new Set(systems)).sort(compareSystems)) {
-            const system = this.container_.get(System)
-            this.systemsEntities_.set(system, new Set<TEntity>())
-            this.systemsEvents_.set(system, connectSystemEvents(system, this))
-            this.systemsQueue_.push(system)
-        }
-    }
+    ) { }
 
     // Entity management
     public createEntity(
