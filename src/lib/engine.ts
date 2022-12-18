@@ -28,11 +28,11 @@ function compareSystems(
     return getSystemPriority(SystemA) - getSystemPriority(SystemB)
 }
 
-class Engine<TRootComponent extends TEngineData> {
+class Engine<TRootData extends TEngineData> {
     private container_: IOC.Container
     private registry_: IRegistry
     private rootEntity_: TEntity
-    private rootComponent_: TRootComponent
+    private rootComponent_: TRootData
 
     private requestAnimationFrameId_ = 0
     private running_ = false
@@ -45,7 +45,7 @@ class Engine<TRootComponent extends TEngineData> {
         }
     }
 
-    constructor(RootComponent: IOC.TConstructor<TRootComponent>) {
+    constructor(RootComponent: IOC.TConstructor<TRootData>) {
         this.container_ = new IOC.Container()
 
         const metadata = getEngineMetadata(RootComponent)
@@ -97,7 +97,7 @@ class Engine<TRootComponent extends TEngineData> {
 }
 
 export function createEngine<RootData extends TEngineData>(
-    RootComponent: RootData,
+    RootComponent: IOC.TConstructor<RootData>,
 ): IEngine<RootData> {
     return new Engine(RootComponent)
 }
