@@ -73,6 +73,8 @@ function connectSystemEvents(
 export class Registry implements IRegistry {
     private entities_: Map<TEntity, ComponentContainer> = new Map()
 
+    private frame_ = 0
+
     private systemsEntities_: Map<ISystem, Set<TEntity>> = new Map()
     private systemsEvents_: Map<ISystem, [TEmitter, IReceiver]> = new Map()
     private systemsQueue_: Array<ISystem> = []
@@ -129,6 +131,10 @@ export class Registry implements IRegistry {
         @Inject(IOC.Container) private container_: IOC.Container,
         @Inject(EntityFactory) private entityFactory_: IEntityFactory,
     ) { }
+
+    public get frame(): number {
+        return this.frame_
+    }
 
     // Entity management
     public createEntity(
@@ -215,6 +221,10 @@ export class Registry implements IRegistry {
     }
 
     public reset() {
+        this.entities_.clear()
+        for (const entities of this.systemsEntities_.values()) {
+            entities.clear()
+        }
         for (const [system, emit] of this.systems_()) {
             system.reset?.(this, emit)
         }

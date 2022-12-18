@@ -30,15 +30,16 @@ function compareSystems(
 
 class Engine<TRootComponent extends TEngineData> {
     private container_: IOC.Container
-    private requestAnimationFrameId_ = 0
     private registry_: IRegistry
     private rootEntity_: TEntity
     private rootComponent_: TRootComponent
 
-    animationFrameCallback_ = () => {
-        if (this.rootComponent_.running) {
+    private requestAnimationFrameId_ = 0
+    private running_ = false
+
+    private animationFrameCallback_ = () => {
+        if (this.running_) {
             this.registry_.update()
-            this.rootComponent_.frame += 1
             this.requestAnimationFrameId_ =
                 global.requestAnimationFrame(this.animationFrameCallback_)
         }
@@ -75,29 +76,28 @@ class Engine<TRootComponent extends TEngineData> {
     }
 
     start() {
-        if (!this.rootComponent_.running) {
-            this.rootComponent_.running = true
+        if (!this.running_) {
+            this.running_ = true
             this.animationFrameCallback_()
         }
     }
 
     stop() {
-        if (this.rootComponent_.running) {
-            this.rootComponent_.running = false
+        if (this.running_) {
+            this.running_ = false
             global.cancelAnimationFrame(this.requestAnimationFrameId_)
         }
     }
 
     reset() {
         this.requestAnimationFrameId_ = 0
-        this.rootComponent_.frame = 0
-        this.rootComponent_.running = false
+        this.running_ = false
         this.registry_.reset()
     }
 }
 
-export function createEngine<RootData extends TEngineData = TEngineData>(
-    RootComponent: IOC.TConstructor<RootData>,
+export function createEngine<RootData extends TEngineData>(
+    RootComponent: RootData,
 ): IEngine<RootData> {
     return new Engine(RootComponent)
 }
