@@ -76,6 +76,8 @@ export interface IRegistry {
     createEntity(...componentTypes: Array<TConstructor>): TEntity
     createEntities(count: number, ...componentTypes: Array<TConstructor>): Array<TEntity>
 
+    readonly frame: number
+
     hasEntity(entity: TEntity): boolean
 
     readonly entities: IEntityQuerySet
@@ -101,10 +103,7 @@ export type TEngineMetadata = {
     Systems: Array<TConstructor<ISystem>>
 }
 
-export type TEngineData = {
-    frame: number
-    running: boolean
-}
+export type TEngineData = TConstructor
 
 export interface IEngine<RootData extends TEngineData = TEngineData> {
     readonly registry: IRegistry,
