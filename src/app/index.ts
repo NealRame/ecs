@@ -104,6 +104,7 @@ const SNAKE_SPEED = 5
     ],
 })
 class EngineData {
+    points = 0
 }
 
 const engine = ECS.createEngine(EngineData)
@@ -111,3 +112,4 @@ const engine = ECS.createEngine(EngineData)
 ;(window as any).engine = engine
 
 engine.start()
+console.log(engine.rootComponent.points)

@@ -103,7 +103,7 @@ export type TEngineMetadata = {
     Systems: Array<TConstructor<ISystem>>
 }
 
-export type TEngineData = TConstructor
+export type TEngineData = object
 
 export interface IEngine<RootData extends TEngineData = TEngineData> {
     readonly registry: IRegistry,
