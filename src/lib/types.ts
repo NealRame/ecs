@@ -105,11 +105,9 @@ export type TEngineMetadata = {
 
 export type TEngineData = object
 
-export interface IEngine<RootData extends TEngineData = TEngineData> {
+export interface IEngine {
     readonly registry: IRegistry,
-    readonly rootEntity: TEntity,
-    readonly rootComponent: RootData,
-    start(): void
-    stop(): void
-    reset(): void
+    start(): IEngine
+    stop(): IEngine
+    reset(): IEngine
 }

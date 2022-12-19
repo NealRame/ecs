@@ -18,7 +18,6 @@ import type {
     IRegistry,
     ISystem,
     TEngineData,
-    TEntity,
 } from "./types"
 
 function compareSystems(
@@ -31,8 +30,6 @@ function compareSystems(
 class Engine<TRootData extends TEngineData> {
     private container_: IOC.Container
     private registry_: IRegistry
-    private rootEntity_: TEntity
-    private rootComponent_: TRootData
 
     private requestAnimationFrameId_ = 0
     private running_ = false
@@ -53,11 +50,6 @@ class Engine<TRootData extends TEngineData> {
         this.container_.set(EntityFactory, metadata.EntityFactory)
         this.registry_ = this.container_.get(Registry)
 
-        this.rootEntity_ = this.registry_.createEntity()
-        this.rootComponent_ = this.container_.get(RootComponent)
-
-        this.registry_.getComponents(this.rootEntity_).add(this.rootComponent_)
-
         for (const System of Array.from(new Set(metadata.Systems)).sort(compareSystems)) {
             this.registry_.registerSystem(System)
         }
@@ -67,19 +59,13 @@ class Engine<TRootData extends TEngineData> {
         return this.registry_
     }
 
-    get rootEntity() {
-        return this.rootEntity_
-    }
-
-    get rootComponent() {
-        return this.rootComponent_
-    }
-
     start() {
         if (!this.running_) {
+            this.reset()
             this.running_ = true
             this.animationFrameCallback_()
         }
+        return this
     }
 
     stop() {
@@ -87,17 +73,18 @@ class Engine<TRootData extends TEngineData> {
             this.running_ = false
             global.cancelAnimationFrame(this.requestAnimationFrameId_)
         }
+        return this
     }
 
     reset() {
         this.requestAnimationFrameId_ = 0
-        this.running_ = false
         this.registry_.reset()
+        return this
     }
 }
 
 export function createEngine<RootData extends TEngineData>(
     RootComponent: IOC.TConstructor<RootData>,
-): IEngine<RootData> {
+): IEngine {
     return new Engine(RootComponent)
 }
