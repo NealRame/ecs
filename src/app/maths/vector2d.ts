@@ -52,33 +52,33 @@ export class Vector2D implements TVector2D {
         return this
     }
 
-    static equals(
+    public static equals(
         u: TVector2D,
         v: TVector2D,
     ): boolean {
         return u.x === v.x && u.y === v.y
     }
 
-    static dot(
+    public static dot(
         u: TVector2D,
         v: TVector2D,
     ): number {
         return u.x*v.x + u.y*v.y
     }
 
-    static norm(v: TVector2D): number {
+    public static norm(v: TVector2D): number {
         return Math.sqrt(Vector2D.dot(v, v))
     }
 
-    static copy(v: TVector2D): Vector2D {
+    public static copy(v: TVector2D): Vector2D {
         return new Vector2D({ x: v.x, y: v.y })
     }
 
-    static wrap(v: TVector2D): Vector2D {
+    public static wrap(v: TVector2D): Vector2D {
         return new Vector2D(v)
     }
 
-    static zero(): TVector2D {
+    public static zero(): TVector2D {
         return { x: 0, y: 0 }
     }
 
