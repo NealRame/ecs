@@ -1,4 +1,6 @@
+import { TEmitter, TDefaultEventMap } from "@nealrame/ts-events"
 import * as ECS from "../lib"
+import { IRegistry } from "../lib"
 
 import {
     type TVector2D,
@@ -55,19 +57,66 @@ const SNAKE_SPEED = 5
 }
 
 @ECS.System({
-    entities: ECS.query.HasAll(Position, Course),
+    entities: ECS.query.HasOne(SnakeHead, SnakeTail),
 }) class MoveSystem implements ECS.ISystem {
-    private course_ = Vector2D.zero()
+    private nextCourse_: Vector2D | null = null
+    private updateFrame_ = 0
 
-    public update(): void {
-        // Update course
+    private handleKeydown_ = (event: KeyboardEvent) => {
+        switch (event.key) {
+        case "ArrowUp":
+            Vector2D.wrap(this.nextCourse_).set(Vector2D.north())
+            break
+        case "ArrowDown":
+            Vector2D.wrap(this.nextCourse_).set(Vector2D.south())
+            break
+        case "ArrowLeft":
+            Vector2D.wrap(this.nextCourse_).set(Vector2D.west())
+            break
+        case "ArrowRight":
+            Vector2D.wrap(this.nextCourse_).set(Vector2D.east())
+            break
+        }
+    }
+
+    public start(): void {
+        document.addEventListener("keydown", this.handleKeydown_)
+    }
+
+    public stop(): void {
+        document.removeEventListener("keydown", this.handleKeydown_)
+    }
+
+    public update(registry: IRegistry): void {
+        this.updateFrame_ = (this.updateFrame_ + 1)%SNAKE_SPEED
+
+        const head = registry.getSystemEntities(this).find(ECS.query.HasAll(SnakeHead))
+        const headComponents = registry.getComponents(head)
+        const headCourse = Vector2D.wrap(headComponents.get(Course))
+
+        if (this.nextCourse_ == null) {
+            this.nextCourse_ = Vector2D.copy(headCourse)
+        }
+
+        if (this.updateFrame_ === 0) {
+            const nextCourse = Vector2D.copy(
+                Vector2D.dot(headCourse, this.nextCourse_) === 0
+                    ? this.nextCourse_
+                    : headCourse
+            )
+
+            for (const entity of Array.from(registry.getSystemEntities(this)).reverse()) {
+                const components = registry.getComponents(entity)
+                const course = Vector2D.wrap(components.get(Course))
+
+                Vector2D.wrap(components.get(Position)).add(course)
+                Vector2D.swap(course, nextCourse)
+            }
+        }
     }
 
     public reset(): void {
-        Vector2D.wrap(this.course_).set({
-            x: 0,
-            y: 0,
-        })
+        this.nextCourse_ = null
     }
 }
 
@@ -98,7 +147,7 @@ const SNAKE_SPEED = 5
         this.context_.save()
         this.context_.scale(this.pixelResolution_, this.pixelResolution_)
 
-        for (const entity of registry.getEntitiesOfSystem(this)) {
+        for (const entity of registry.getSystemEntities(this)) {
             const components = registry.getComponents(entity)
             const position = components.get(Position)
 
@@ -119,8 +168,8 @@ const SNAKE_SPEED = 5
 @ECS.Engine({
     Systems: [
         GameSystem,
-        RenderSystem,
         MoveSystem,
+        RenderSystem,
     ],
 })
 class EngineData {
