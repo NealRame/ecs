@@ -50,8 +50,10 @@ export type TSystemDefaultEventMap = TDefaultEventMap
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ISystem<TEvents extends TEventMap = TSystemDefaultEventMap> {
-    update?(registry: IRegistry, emit: TEmitter<TEvents>): void
     reset?(registry: IRegistry, emit: TEmitter<TEvents>): void
+    start?(registry: IRegistry, emit: TEmitter<TEvents>): void
+    stop?(registry: IRegistry, emit: TEmitter<TEvents>): void
+    update?(registry: IRegistry, emit: TEmitter<TEvents>): void
 }
 
 export interface ISystemEventHandler<TEvents extends TEventMap = TSystemDefaultEventMap> {
@@ -76,26 +78,14 @@ export interface IRegistry {
     createEntity(...componentTypes: Array<TConstructor>): TEntity
     createEntities(count: number, ...componentTypes: Array<TConstructor>): Array<TEntity>
 
-    readonly frame: number
-
     hasEntity(entity: TEntity): boolean
-
-    readonly entities: IEntityQuerySet
-    getEntitiesFilterBy(predicate: TEntityQueryPredicate): IEntityQuerySet
-    getEntitiesOfSystem(System: ISystem): IEntityQuerySet
-
     getComponents(entity: TEntity): IComponentContainer
 
-    readonly systems: Iterable<ISystem>
+    readonly entities: IEntityQuerySet
+    filterEntities(predicate: TEntityQueryPredicate): IEntityQuerySet
+    getSystemEntities(System: ISystem): IEntityQuerySet
+
     registerSystem(System: TConstructor<ISystem>): ISystem
-    getSystem(System: TConstructor<ISystem>): ISystem
-    hasSystem(System: TConstructor<ISystem>): boolean
-
-
-    reset(): void
-    update(): void
-
-    events<TEvents extends TEventMap>(System: TConstructor<ISystem<TEvents>>): IReceiver<TEvents>
 }
 
 export type TEngineMetadata = {
@@ -107,7 +97,10 @@ export type TEngineData = object
 
 export interface IEngine {
     readonly registry: IRegistry,
+
     start(): IEngine
     stop(): IEngine
     reset(): IEngine
+
+    events<TEvents extends TEventMap>(System: TConstructor<ISystem<TEvents>>): IReceiver<TEvents>
 }
