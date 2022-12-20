@@ -70,12 +70,23 @@ export class Vector2D implements TVector2D {
         return Math.sqrt(Vector2D.dot(v, v))
     }
 
-    public static copy(v: TVector2D): Vector2D {
-        return new Vector2D({ x: v.x, y: v.y })
+    public static copy({ x, y }: TVector2D): Vector2D {
+        return new Vector2D({ x, y })
     }
 
     public static wrap(v: TVector2D): Vector2D {
         return new Vector2D(v)
+    }
+
+    public static swap(
+        u: TVector2D,
+        v: TVector2D,
+    ): void {
+        const temp = Vector2D.copy(u)
+        u.x = v.x
+        u.y = v.y
+        v.x = temp.x
+        v.y = temp.y
     }
 
     public static zero(): TVector2D {
