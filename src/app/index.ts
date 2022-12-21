@@ -12,26 +12,22 @@ const PIXEL_SIZE = 5
 const SNAKE_SIZE = 3
 const SNAKE_SPEED = 5
 
+@ECS.Component class Game {
+    points = 0
+}
 @ECS.Component class Course implements TVector2D {
     x = 0
     y = 0
 }
-
 @ECS.Component class Position implements TVector2D {
     x = 0
     y = 0
-}
-
-@ECS.Component class Game {
-    points = 0
 }
 @ECS.Component class Fruit {}
 @ECS.Component class SnakeHead {}
 @ECS.Component class SnakeTail {}
 
 @ECS.System({
-    entities: ECS.query.HasAll(Game, SnakeHead, SnakeTail, Fruit),
-    priority: 0,
 }) class GameSystem implements ECS.ISystem {
     reset(registry: ECS.IRegistry): void {
         registry.createEntity(Game)
@@ -52,6 +48,13 @@ const SNAKE_SPEED = 5
                 y: 0,
             })
         }
+
+        const fruit = registry.createEntity(Position, Fruit)
+        const fruitComponents = registry.getComponents(fruit)
+        Vector2D.wrap(fruitComponents.get(Position)).set({
+            x: WIDTH/6,
+            y: HEIGHT/6,
+        })
     }
 }
 
@@ -104,6 +107,8 @@ const SNAKE_SPEED = 5
                     : headCourse
             )
 
+            // snake entities have been create from tail to head so we need to
+            // iterate them in reverse order.
             for (const entity of registry.getSystemEntities(this).allReversed()) {
                 const components = registry.getComponents(entity)
                 const course = Vector2D.wrap(components.get(Course))
@@ -121,6 +126,14 @@ const SNAKE_SPEED = 5
 
 @ECS.System({
     entities: ECS.query.HasAll(Position, Course),
+}) class CollisionSystem implements ECS.ISystem {
+    public update(registry: ECS.IRegistry): void {
+        // check for collisions with the walls and the snake itself
+    }
+}
+
+@ECS.System({
+    entities: ECS.query.HasAll(Position),
     priority: 1,
 }) class RenderSystem implements ECS.ISystem {
     private canvas_: HTMLCanvasElement
