@@ -1,4 +1,3 @@
-import { TEmitter, TDefaultEventMap } from "@nealrame/ts-events"
 import * as ECS from "../lib"
 import { IRegistry } from "../lib"
 
