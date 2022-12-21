@@ -1,5 +1,10 @@
+import {
+    EntitySet,
+} from "./entity"
+
 import type {
     IRegistry,
+    IEntitySet,
     IEntityQuerySet,
     TEntity,
     TEntityQueryPredicate,
@@ -8,14 +13,26 @@ import type {
 
 export class EntityQuerySet implements IEntityQuerySet {
     constructor(
-        private engine_: IRegistry,
-        private entities_: Iterable<TEntity>,
+        private registry_: IRegistry,
+        private entities_: IEntitySet,
         private predicate_?: TEntityQueryPredicate,
     ) { }
 
-    *[Symbol.iterator]() {
-        for (const entity of this.entities_) {
-            if (this.predicate_?.(this.engine_.getComponents(entity)) ?? true) {
+    [Symbol.iterator]() {
+        return this.all()
+    }
+
+    *all() {
+        for (const entity of this.entities_.all()) {
+            if (this.predicate_?.(this.registry_.getComponents(entity)) ?? true) {
+                yield entity
+            }
+        }
+    }
+
+    *allReversed() {
+        for (const entity of this.entities_.allReversed()) {
+            if (this.predicate_?.(this.registry_.getComponents(entity)) ?? true) {
                 yield entity
             }
         }
@@ -24,14 +41,14 @@ export class EntityQuerySet implements IEntityQuerySet {
     filter(
         predicate: TEntityQueryPredicate
     ): IEntityQuerySet {
-        return new EntityQuerySet(this.engine_, this.entities_, predicate)
+        return new EntityQuerySet(this.registry_, this, predicate)
     }
 
     find(
         predicate: TEntityQueryPredicate
     ): TEntity | undefined {
-        for (const entity of this.entities_) {
-            if (predicate(this.engine_.getComponents(entity))) {
+        for (const entity of this.entities_.all()) {
+            if (predicate(this.registry_.getComponents(entity))) {
                 return entity
             }
         }
@@ -39,10 +56,10 @@ export class EntityQuerySet implements IEntityQuerySet {
 
     partition(
         pred: TEntityQueryPredicate
-    ): [Set<TEntity>, Set<TEntity>] {
-        const [filtered, rejected] = [new Set<TEntity>(), new Set<TEntity>()]
-        for (const entity of this.entities_) {
-            if (pred(this.engine_.getComponents(entity))) {
+    ): [IEntitySet, IEntitySet] {
+        const [filtered, rejected] = [new EntitySet(), new EntitySet()]
+        for (const entity of this.entities_.all()) {
+            if (pred(this.registry_.getComponents(entity))) {
                 filtered.add(entity)
             } else {
                 rejected.add(entity)
