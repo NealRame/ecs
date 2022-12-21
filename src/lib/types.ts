@@ -37,13 +37,16 @@ export interface IComponentContainer {
 
 export type TEntityQueryPredicate = (componentsContainer: IComponentContainer) => boolean
 
-export interface IEntityQuerySet {
-    [Symbol.iterator](): Iterator<TEntity>
+export interface IEntitySet {
+    [Symbol.iterator](): IterableIterator<TEntity>
+    all(): Iterable<TEntity>
+    allReversed(): Iterable<TEntity>
+}
 
-    filter(pred: TEntityQueryPredicate): IEntityQuerySet
-
+export interface IEntityQuerySet extends IEntitySet {
     find(pred: TEntityQueryPredicate): TEntity | undefined
-    partition(pred: TEntityQueryPredicate): [Set<TEntity>, Set<TEntity>]
+    filter(pred: TEntityQueryPredicate): IEntityQuerySet
+    partition(pred: TEntityQueryPredicate): [IEntitySet, IEntitySet]
 }
 
 export type TSystemDefaultEventMap = TDefaultEventMap

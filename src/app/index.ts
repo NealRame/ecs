@@ -105,7 +105,7 @@ const SNAKE_SPEED = 5
                     : headCourse
             )
 
-            for (const entity of Array.from(registry.getSystemEntities(this)).reverse()) {
+            for (const entity of registry.getSystemEntities(this).allReversed()) {
                 const components = registry.getComponents(entity)
                 const course = Vector2D.wrap(components.get(Course))
 

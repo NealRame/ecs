@@ -12,6 +12,10 @@ import {
 } from "./constants"
 
 import {
+    EntitySet,
+} from "./entity"
+
+import {
     EntityQuerySet,
 } from "./queryset"
 
@@ -24,11 +28,11 @@ import type {
     TEntity,
     TEntityQueryPredicate,
 } from "./types"
-import { Inject } from "@nealrame/ts-injector"
 
 export class Registry implements IRegistry {
-    private entities_: Map<TEntity, ComponentContainer> = new Map()
-    private systemsEntities_: Map<ISystem, Set<TEntity>> = new Map()
+    private entities_: EntitySet = new EntitySet()
+    private componentsMap_: Map<TEntity, ComponentContainer> = new Map()
+    private systemsEntities_: Map<ISystem, EntitySet> = new Map()
 
     private registerEntity_(
         entity: TEntity,
@@ -39,7 +43,8 @@ export class Registry implements IRegistry {
             this.container_,
             () => this.checkEntity_(entity),
         )
-        this.entities_.set(entity, components)
+        this.entities_.add(entity)
+        this.componentsMap_.set(entity, components)
         for (const componentType of componentTypes) {
             components.add(componentType)
         }
@@ -55,7 +60,7 @@ export class Registry implements IRegistry {
         entity: TEntity,
         system: ISystem,
     ) {
-        const components = this.entities_.get(entity)
+        const components = this.componentsMap_.get(entity)
         if (components != null) {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const entities = this.systemsEntities_.get(system)!
@@ -69,8 +74,8 @@ export class Registry implements IRegistry {
     }
 
     constructor(
-        @Inject(IOC.Container) private container_: IOC.Container,
-        @Inject(EntityFactory) private entityFactory_: IEntityFactory,
+        @IOC.Inject(IOC.Container) private container_: IOC.Container,
+        @IOC.Inject(EntityFactory) private entityFactory_: IEntityFactory,
     ) { }
 
     // Entity management
@@ -93,6 +98,16 @@ export class Registry implements IRegistry {
         return entities
     }
 
+    public destroyEntity(entity: TEntity) {
+        if (this.hasEntity(entity)) {
+            this.componentsMap_.delete(entity)
+            this.entities_.delete(entity)
+            for (const entities of this.systemsEntities_.values()) {
+                entities.delete(entity)
+            }
+        }
+    }
+
     public hasEntity(entity: TEntity)
         : boolean {
         return this.entities_.has(entity)
@@ -100,7 +115,7 @@ export class Registry implements IRegistry {
 
     public getComponents(entity: TEntity)
         : IComponentContainer {
-        const components = this.entities_.get(entity)
+        const components = this.componentsMap_.get(entity)
         if (components == null) {
             throw new Error(`Entity ${entity} does not exist`)
         }
@@ -108,19 +123,19 @@ export class Registry implements IRegistry {
     }
 
     public get entities(): IEntityQuerySet {
-        return new EntityQuerySet(this, this.entities_.keys())
+        return new EntityQuerySet(this, this.entities_)
     }
 
     public filterEntities(
         predicate: TEntityQueryPredicate,
     ): IEntityQuerySet {
-        return new EntityQuerySet(this, this.entities_.keys(), predicate)
+        return new EntityQuerySet(this, this.entities_, predicate)
     }
 
     public getSystemEntities(
         system: ISystem,
     ): IEntityQuerySet {
-        return new EntityQuerySet(this, this.systemsEntities_.get(system) ?? new Set<TEntity>())
+        return new EntityQuerySet(this, this.systemsEntities_.get(system) ?? new EntitySet())
     }
 
     public registerSystem(
@@ -128,7 +143,7 @@ export class Registry implements IRegistry {
     ): ISystem {
         const system = this.container_.get(System)
         if (!this.systemsEntities_.has(system)) {
-            this.systemsEntities_.set(system, new Set<TEntity>())
+            this.systemsEntities_.set(system, new EntitySet())
         }
         return system
     }
