@@ -1,9 +1,8 @@
 import * as ECS from "../lib"
-import { IRegistry } from "../lib"
-
 import {
     type TVector2D,
     Vector2D,
+    Rect,
 } from "./maths"
 
 const WIDTH = 84
@@ -14,6 +13,8 @@ const SNAKE_SPEED = 5
 
 @ECS.Component class Game {
     points = 0
+    width = WIDTH
+    height = HEIGHT
 }
 @ECS.Component class Course implements TVector2D {
     x = 0
@@ -28,15 +29,19 @@ const SNAKE_SPEED = 5
 @ECS.Component class SnakeTail {}
 
 @ECS.System({
+    entities: ECS.query.All,
 }) class GameSystem implements ECS.ISystem {
     reset(registry: ECS.IRegistry): void {
-        registry.createEntity(Game)
+        const game = registry.createEntity(Game)
+        const gameComponent = registry.getComponents(game).get(Game)
+        gameComponent.points = 0
+        gameComponent.width = Math.round(WIDTH/3)
+        gameComponent.height = Math.round(HEIGHT/3)
 
         const snake = [
             ...registry.createEntities(4, Position, Course, SnakeTail),
             registry.createEntity(Position, Course, SnakeHead),
         ]
-
         for (let i = 0; i < snake.length; ++i) {
             const components = registry.getComponents(snake[i])
             Vector2D.wrap(components.get(Position)).set({
@@ -52,9 +57,49 @@ const SNAKE_SPEED = 5
         const fruit = registry.createEntity(Position, Fruit)
         const fruitComponents = registry.getComponents(fruit)
         Vector2D.wrap(fruitComponents.get(Position)).set({
-            x: WIDTH/6,
-            y: HEIGHT/6,
+            x: Math.round(gameComponent.width/2),
+            y: Math.round(gameComponent.height/2),
         })
+    }
+
+    update(registry: ECS.IRegistry): void {
+        const aggregate = registry.getSystemEntities(this).groupBy(
+            components => {
+                if (components.has(Game)) {
+                    return "game"
+                } else if (components.has(Fruit)) {
+                    return "fruit"
+                } else if (components.has(SnakeHead)) {
+                    return "snakeHead"
+                } else if (components.has(SnakeTail)) {
+                    return "snakeTail"
+                }
+                return "_"
+            }
+        )
+
+        const game = aggregate["game"]?.first()
+        const snakeHead = aggregate["snakeHead"]?.first()
+
+        if (!game || !snakeHead) {
+            return
+        }
+
+        const gameRect = Rect.fromSize(registry.getComponents(game).get(Game))
+        const snakeHeadPosition = registry.getComponents(snakeHead).get(Position)
+
+        // check for wall collision
+        if (!gameRect.contains(snakeHeadPosition)) {
+            return
+        }
+
+        // check for snake collision
+        for (const entity of aggregate["snakeTail"]?.all() ?? []) {
+            const snakeTailPosition = registry.getComponents(entity).get(Position)
+            if (Vector2D.equals(snakeHeadPosition, snakeTailPosition)) {
+                return
+            }
+        }
     }
 }
 
@@ -89,7 +134,7 @@ const SNAKE_SPEED = 5
         document.removeEventListener("keydown", this.handleKeydown_)
     }
 
-    public update(registry: IRegistry): void {
+    public update(registry: ECS.IRegistry): void {
         this.updateFrame_ = (this.updateFrame_ + 1)%SNAKE_SPEED
 
         const head = registry.getSystemEntities(this).find(ECS.query.HasAll(SnakeHead))
@@ -121,14 +166,6 @@ const SNAKE_SPEED = 5
 
     public reset(): void {
         this.nextCourse_ = null
-    }
-}
-
-@ECS.System({
-    entities: ECS.query.HasAll(Position, Course),
-}) class CollisionSystem implements ECS.ISystem {
-    public update(registry: ECS.IRegistry): void {
-        // check for collisions with the walls and the snake itself
     }
 }
 
