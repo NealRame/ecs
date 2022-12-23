@@ -82,4 +82,8 @@ export class EntitySet implements IEntitySet {
             yield this.queue_[i]
         }
     }
+
+    first(): TEntity | undefined {
+        return this.queue_[0]
+    } 
 }
