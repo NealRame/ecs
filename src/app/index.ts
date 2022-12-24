@@ -1,7 +1,7 @@
 import * as ECS from "../lib"
 
 import {
-    TEmitter,
+    type TEmitter,
 } from "@nealrame/ts-events"
 
 import {
