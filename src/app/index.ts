@@ -49,19 +49,16 @@ type GameSystemEvents = {
         gameComponent.height = Math.round(HEIGHT/3)
 
         const snake = [
-            ...registry.createEntities(4, Position, Course, SnakeTail),
             registry.createEntity(Position, Course, SnakeHead),
+            ...registry.createEntities(4, Position, Course, SnakeTail),
         ]
         for (let i = 0; i < snake.length; ++i) {
             const components = registry.getComponents(snake[i])
             Vector2D.wrap(components.get(Position)).set({
-                x: i,
+                x: gameComponent.width - snake.length + i,
                 y: 0,
             })
-            Vector2D.wrap(components.get(Course)).set({
-                x: 1,
-                y: 0,
-            })
+            Vector2D.wrap(components.get(Course)).set(Vector2D.west())
         }
 
         const fruit = registry.createEntity(Position, Fruit)
@@ -77,11 +74,14 @@ type GameSystemEvents = {
             components => {
                 if (components.has(Game)) {
                     return "game"
-                } else if (components.has(Fruit)) {
+                }
+                if (components.has(Fruit)) {
                     return "fruit"
-                } else if (components.has(SnakeHead)) {
+                }
+                if (components.has(SnakeHead)) {
                     return "snakeHead"
-                } else if (components.has(SnakeTail)) {
+                }
+                if (components.has(SnakeTail)) {
                     return "snakeTail"
                 }
                 return "_"
@@ -178,7 +178,7 @@ type GameSystemEvents = {
 
             // snake entities have been create from tail to head so we need to
             // iterate them in reverse order.
-            for (const entity of registry.getSystemEntities(this).allReversed()) {
+            for (const entity of registry.getSystemEntities(this)) {
                 const components = registry.getComponents(entity)
                 const course = Vector2D.wrap(components.get(Course))
 
