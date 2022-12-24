@@ -1,6 +1,11 @@
 import "reflect-metadata"
 
 import {
+    TEventKey,
+    TEventMap,
+} from "@nealrame/ts-events"
+
+import {
     Service,
     ServiceLifecycle,
     TConstructor,
@@ -19,21 +24,6 @@ import type {
 
 export type ISystemMetadata = Required<ISystemOptions>
 
-export function System(
-    options: ISystemOptions
-): ClassDecorator {
-    return ((target: TConstructor<ISystem>) => {
-        const systemMetadata: ISystemMetadata = {
-            entities: Query.None,
-            events: {},
-            priority: 0,
-            ...options,
-        }
-        Service({ lifecycle: ServiceLifecycle.Singleton })(target)
-        Reflect.defineMetadata(SystemMetadataKey, systemMetadata, target)
-    }) as ClassDecorator
-}
-
 export function getSystemPriority(
     System: TConstructor,
 ): number {
@@ -42,4 +32,18 @@ export function getSystemPriority(
         throw new Error(`System ${System.name} does not exists.`)
     }
     return (metadata as ISystemMetadata).priority
+}
+
+export function System(
+    options: ISystemOptions
+): ClassDecorator {
+    return ((target: TConstructor<ISystem>) => {
+        const systemMetadata: ISystemMetadata = {
+            entities: Query.None,
+            priority: 0,
+            ...options,
+        }
+        Service({ lifecycle: ServiceLifecycle.Singleton })(target)
+        Reflect.defineMetadata(SystemMetadataKey, systemMetadata, target)
+    }) as ClassDecorator
 }

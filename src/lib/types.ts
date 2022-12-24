@@ -78,9 +78,8 @@ export type TSystemEventHandlerMap<TEvents extends TEventMap = TSystemDefaultEve
     ) => void
 }
 
-export interface ISystemOptions<TEvents extends TEventMap = TSystemDefaultEventMap> {
+export interface ISystemOptions {
     entities?: TEntityQueryPredicate
-    events?: TSystemEventHandlerMap<TEvents>
     priority?: number
 }
 
@@ -98,9 +97,18 @@ export interface IRegistry {
     registerSystem(System: TConstructor<ISystem>): ISystem
 }
 
+export type TEngineOptions = {
+    EntityFactory?: IEntityFactory
+    Systems?: Array<TConstructor<ISystem> >
+}
+
+export type TEngineSystemEventMap<TEvents extends TDefaultEventMap = TDefaultEventMap> = {
+    [K in TEventKey<TEvents>]?: string
+}
+
 export type TEngineMetadata = {
     EntityFactory: IEntityFactory
-    Systems: Array<TConstructor<ISystem>>
+    Systems: Map<TConstructor<ISystem>, TEngineSystemEventMap>
 }
 
 export type TEngineData = object
