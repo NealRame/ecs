@@ -1,4 +1,9 @@
 import * as ECS from "../lib"
+
+import {
+    TEmitter,
+} from "@nealrame/ts-events"
+
 import {
     type TVector2D,
     Vector2D,
@@ -28,9 +33,14 @@ const SNAKE_SPEED = 5
 @ECS.Component class SnakeHead {}
 @ECS.Component class SnakeTail {}
 
+type GameSystemEvents = {
+    wallCollision: void
+    tailCollision: void
+}
+
 @ECS.System({
     entities: ECS.query.All,
-}) class GameSystem implements ECS.ISystem {
+}) class GameSystem implements ECS.ISystem<GameSystemEvents> {
     reset(registry: ECS.IRegistry): void {
         const game = registry.createEntity(Game)
         const gameComponent = registry.getComponents(game).get(Game)
@@ -62,7 +72,7 @@ const SNAKE_SPEED = 5
         })
     }
 
-    update(registry: ECS.IRegistry): void {
+    update(registry: ECS.IRegistry, emit: TEmitter<GameSystemEvents>): void {
         const aggregate = registry.getSystemEntities(this).groupBy(
             components => {
                 if (components.has(Game)) {
@@ -80,16 +90,20 @@ const SNAKE_SPEED = 5
 
         const game = aggregate["game"]?.first()
         const snakeHead = aggregate["snakeHead"]?.first()
+        const fruit = aggregate["fruit"]?.first()
 
-        if (!game || !snakeHead) {
+        if (game == null || snakeHead == null || fruit == null) {
             return
         }
 
-        const gameRect = Rect.fromSize(registry.getComponents(game).get(Game))
+        const gameComponent = registry.getComponents(game).get(Game)
+
         const snakeHeadPosition = registry.getComponents(snakeHead).get(Position)
+        const fruitPosition = registry.getComponents(fruit).get(Position)
 
         // check for wall collision
-        if (!gameRect.contains(snakeHeadPosition)) {
+        if (!Rect.fromSize(gameComponent).contains(snakeHeadPosition)) {
+            emit("wallCollision")
             return
         }
 
@@ -97,8 +111,18 @@ const SNAKE_SPEED = 5
         for (const entity of aggregate["snakeTail"]?.all() ?? []) {
             const snakeTailPosition = registry.getComponents(entity).get(Position)
             if (Vector2D.equals(snakeHeadPosition, snakeTailPosition)) {
+                emit("tailCollision")
                 return
             }
+        }
+
+        // check for fruit collision
+        if (Vector2D.equals(snakeHeadPosition, fruitPosition)) {
+            gameComponent.points += 1
+            Vector2D.wrap(fruitPosition).set({
+                x: Math.round(Math.random()*gameComponent.width),
+                y: Math.round(Math.random()*gameComponent.height),
+            })
         }
     }
 }
@@ -222,6 +246,15 @@ const SNAKE_SPEED = 5
     ],
 })
 class EngineData {
+    @ECS.On(GameSystem)("wallCollision")
+    public onWallCollision(engine: ECS.IEngine): void {
+        engine.stop()
+    }
+
+    @ECS.On(GameSystem)("tailCollision")
+    public onTailCollision(engine: ECS.IEngine): void {
+        engine.stop()
+    }
 }
 
 const engine = ECS.createEngine(EngineData)
