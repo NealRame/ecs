@@ -19,6 +19,7 @@ import type {
     IRegistry,
     ISystem,
     TEngineData,
+    TEngineSystemEventMap,
 } from "./types"
 
 function LessPriorityThan(priority: number) {
@@ -29,6 +30,7 @@ function LessPriorityThan(priority: number) {
 
 class Engine<TRootData extends TEngineData> {
     private container_: IOC.Container
+    private controller_: TRootData
     private registry_: IRegistry
 
     private systemQueue_: Array<[ISystem, [Events.TEmitter, Events.IReceiver]]> = []
@@ -62,8 +64,16 @@ class Engine<TRootData extends TEngineData> {
 
     private createSystemEntry_(
         System: IOC.TConstructor<ISystem>,
+        SystemEvents: TEngineSystemEventMap,
     ): [ISystem, [Events.TEmitter, Events.IReceiver]] {
-        return [this.container_.get(System), Events.useEvents()]
+        const [emit, events] = Events.useEvents()
+        const system = this.container_.get(System)
+        for (const [eventKey, handler] of Object.entries(SystemEvents)) {
+            events.on(eventKey, (...args) => {
+                (this.controller_ as any)[handler!].call(this.controller_, this, ...args)
+            })
+        }
+        return [system, [emit, events]]
     }
 
     private insertSystemEntryIndex_(
@@ -76,25 +86,28 @@ class Engine<TRootData extends TEngineData> {
 
     private insertSystemEntry_(
         System: IOC.TConstructor<ISystem>,
+        SystemEvents: TEngineSystemEventMap,
     ): void {
         if (!this.hasSystem_(System)) {
-            const systemEntry = this.createSystemEntry_(System)
+            const systemEntry = this.createSystemEntry_(System, SystemEvents)
             const systemQueueIndex = this.insertSystemEntryIndex_(System)
+
             this.systemQueue_.splice(systemQueueIndex, 0, systemEntry)
             this.registry.registerSystem(System)
         }
     }
 
     constructor(RootComponent: IOC.TConstructor<TRootData>) {
-        this.container_ = new IOC.Container()
-
         const metadata = getEngineMetadata(RootComponent)
 
+        this.container_ = new IOC.Container()
         this.container_.set(EntityFactory, metadata.EntityFactory)
-        this.registry_ = this.container_.get(Registry)
 
-        for (const System of metadata.Systems) {
-            this.insertSystemEntry_(System)
+        this.registry_ = this.container_.get(Registry)
+        this.controller_ = this.container_.get(RootComponent)
+
+        for (const [System, Events] of metadata.Systems) {
+            this.insertSystemEntry_(System, Events)
         }
     }
 
