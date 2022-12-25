@@ -48,6 +48,14 @@ export class EntityQuerySet implements IEntityQuerySet {
         }
     }
 
+    last(): TEntity | undefined {
+        for (const entity of this.entities_.allReversed()) {
+            if (this.predicate_?.(this.registry_.getComponents(entity)) ?? true) {
+                return entity
+            }
+        }
+    }
+
     filter(
         predicate: TEntityQueryPredicate
     ): IEntityQuerySet {
@@ -84,15 +92,17 @@ export class EntityQuerySet implements IEntityQuerySet {
 
     partition(
         pred: TEntityQueryPredicate
-    ): [IEntitySet, IEntitySet] {
+    ): [IEntityQuerySet, IEntityQuerySet] {
         const [filtered, rejected] = [new EntitySet(), new EntitySet()]
         for (const entity of this.entities_.all()) {
-            if (pred(this.registry_.getComponents(entity))) {
-                filtered.add(entity)
-            } else {
-                rejected.add(entity)
-            }
+            (pred(this.registry_.getComponents(entity))
+                ? filtered
+                : rejected
+            ).add(entity)
         }
-        return [filtered, rejected]
+        return [
+            new EntityQuerySet(this.registry_, filtered),
+            new EntityQuerySet(this.registry_, rejected),
+        ]
     }
 }

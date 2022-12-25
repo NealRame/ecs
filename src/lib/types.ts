@@ -42,18 +42,18 @@ export interface IEntitySet {
     allReversed(): Iterable<TEntity>
 
     first(): TEntity | undefined
+    last(): TEntity | undefined
 }
 
+export type TEntityQueryAggregate = Record<number | string | symbol, IEntityQuerySet>
 export type TEntityQueryKeyMapper = (componentsContainer: IComponentContainer) => number | string | symbol
 export type TEntityQueryPredicate = (componentsContainer: IComponentContainer) => boolean
-
-export type TEntityQueryAggregate = Record<number | string | symbol, IEntityQuerySet>
 
 export interface IEntityQuerySet extends IEntitySet {
     find(pred: TEntityQueryPredicate): TEntity | undefined
     filter(pred: TEntityQueryPredicate): IEntityQuerySet
     groupBy(key: TEntityQueryKeyMapper): TEntityQueryAggregate
-    partition(pred: TEntityQueryPredicate): [IEntitySet, IEntitySet]
+    partition(pred: TEntityQueryPredicate): [IEntityQuerySet, IEntityQuerySet]
 }
 
 export type TSystemDefaultEventMap = TDefaultEventMap
