@@ -41,6 +41,19 @@ type GameSystemEvents = {
 @ECS.System({
     entities: ECS.query.All,
 }) class GameSystem implements ECS.ISystem<GameSystemEvents> {
+    growSnake_(
+        registry: ECS.IRegistry,
+        oldTail: ECS.TEntity,
+    ): void {
+        const newTail = registry.createEntity(Position, Course, SnakeTail)
+        const newTailComponents = registry.getComponents(newTail)
+        const oldTailComponents = registry.getComponents(oldTail)
+        Vector2D.wrap(newTailComponents.get(Course)).set(Vector2D.zero())
+        Vector2D.wrap(newTailComponents.get(Position)).set(
+            oldTailComponents.get(Position)
+        )
+    }
+
     reset(registry: ECS.IRegistry): void {
         const game = registry.createEntity(Game)
         const gameComponent = registry.getComponents(game).get(Game)
@@ -120,9 +133,10 @@ type GameSystemEvents = {
         if (Vector2D.equals(snakeHeadPosition, fruitPosition)) {
             gameComponent.points += 1
             Vector2D.wrap(fruitPosition).set({
-                x: Math.round(Math.random()*gameComponent.width),
-                y: Math.round(Math.random()*gameComponent.height),
+                x: Math.round(Math.random()*(gameComponent.width - 1)),
+                y: Math.round(Math.random()*(gameComponent.height - 1)),
             })
+            this.growSnake_(registry, aggregate["snakeTail"]?.last())
         }
     }
 }
