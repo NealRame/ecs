@@ -85,5 +85,9 @@ export class EntitySet implements IEntitySet {
 
     first(): TEntity | undefined {
         return this.queue_[0]
-    } 
+    }
+
+    last(): TEntity | undefined {
+        return this.queue_[this.queue_.length - 1]
+    }
 }
