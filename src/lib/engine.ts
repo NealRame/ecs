@@ -28,12 +28,15 @@ function LessPriorityThan(priority: number) {
     }
 }
 
+type TEngineSystemEventsCallbacks = Map<string, (...args: Array<any>) => void>
+
 class Engine<TRootData extends TEngineData> {
     private container_: IOC.Container
     private controller_: TRootData
     private registry_: IRegistry
 
     private systemQueue_: Array<[ISystem, [Events.TEmitter, Events.IReceiver]]> = []
+    private systemEvents_: Map<ISystem, TEngineSystemEventsCallbacks> = new Map()
 
     private requestAnimationFrameId_ = 0
     private running_ = false
@@ -62,38 +65,59 @@ class Engine<TRootData extends TEngineData> {
         return this.getSystem_(System) != null
     }
 
-    private createSystemEntry_(
-        System: IOC.TConstructor<ISystem>,
+    private createSystemEventsCallbacks_(
         SystemEvents: TEngineSystemEventMap,
-    ): [ISystem, [Events.TEmitter, Events.IReceiver]] {
-        const [emit, events] = Events.useEvents()
-        const system = this.container_.get(System)
-        for (const [eventKey, handler] of Object.entries(SystemEvents)) {
-            events.on(eventKey, (...args) => {
-                (this.controller_ as any)[handler!].call(this.controller_, this, ...args)
+    ): TEngineSystemEventsCallbacks {
+        const callbacks = new Map()
+        for (const [eventKey, handlerKey] of Object.entries(SystemEvents) as Array<[string, string]>) {
+            callbacks.set(eventKey, (...args: Array<unknown>) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (this.controller_ as any)[handlerKey].call(this.controller_, this, ...args)
             })
         }
-        return [system, [emit, events]]
+        return callbacks
     }
 
-    private insertSystemEntryIndex_(
+    private createSystemEntry_(
         System: IOC.TConstructor<ISystem>,
-    ): number {
-        const priority = getSystemPriority(System)
-        const index = this.systemQueue_.findIndex(LessPriorityThan(priority))
-        return index === -1 ? this.systemQueue_.length : index
+    ): [ISystem, [Events.TEmitter, Events.IReceiver]] {
+        return [
+            this.container_.get(System),
+            Events.useEvents(),
+        ]
     }
 
     private insertSystemEntry_(
         System: IOC.TConstructor<ISystem>,
+    ): void {
+        const priority = getSystemPriority(System)
+        const entry = this.createSystemEntry_(System)
+        const index = this.systemQueue_.findIndex(LessPriorityThan(priority))
+        if (index === -1) {
+            this.systemQueue_.push(entry)
+        } else {
+            this.systemQueue_.splice(index, 0, entry)
+        }
+    }
+
+    private registerSystem_(
+        System: IOC.TConstructor<ISystem>,
+    ): void {
+        if (!this.hasSystem_(System)) {
+            this.registry.registerSystem(System)
+            this.insertSystemEntry_(System)
+        }
+    }
+
+    private registerSystemEvents_(
+        System: IOC.TConstructor<ISystem>,
         SystemEvents: TEngineSystemEventMap,
     ): void {
         if (!this.hasSystem_(System)) {
-            const systemEntry = this.createSystemEntry_(System, SystemEvents)
-            const systemQueueIndex = this.insertSystemEntryIndex_(System)
-
-            this.systemQueue_.splice(systemQueueIndex, 0, systemEntry)
-            this.registry.registerSystem(System)
+            this.systemEvents_.set(
+                this.container_.get(System),
+                this.createSystemEventsCallbacks_(SystemEvents),
+            )
         }
     }
 
@@ -107,7 +131,8 @@ class Engine<TRootData extends TEngineData> {
         this.controller_ = this.container_.get(RootComponent)
 
         for (const [System, Events] of metadata.Systems) {
-            this.insertSystemEntry_(System, Events)
+            this.registerSystem_(System)
+            this.registerSystemEvents_(System, Events)
         }
     }
 
