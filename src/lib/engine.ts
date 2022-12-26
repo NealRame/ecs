@@ -35,11 +35,11 @@ class Engine<TRootData extends TEngineData> {
     private controller_: TRootData
     private registry_: IRegistry
 
-    private systemQueue_: Array<[ISystem, [Events.TEmitter, Events.IReceiver]]> = []
-    private systemEvents_: Map<ISystem, TEngineSystemEventsCallbacks> = new Map()
-
     private requestAnimationFrameId_ = 0
     private running_ = false
+
+    private systemQueue_: Array<[ISystem, [Events.TEmitter, Events.IReceiver]]> = []
+    private systemEvents_: Map<ISystem, TEngineSystemEventsCallbacks> = new Map()
 
     private animationFrameCallback_ = () => {
         if (this.running_) {
