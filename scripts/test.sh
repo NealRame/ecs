@@ -1,5 +1,10 @@
 #! /usr/bin/env bash
 
-TS_NODE_COMPILER_OPTIONS='{"module": "commonjs"}' \
-TS_NODE_PROJECT="$PWD/src/tests/tsconfig.json" \
-    mocha -r ts-node/register "src/tests/**/*.ts"
+export TESTS_DIR="$PWD/src/tests/spec"
+export TS_NODE_COMPILER_OPTIONS='{"module": "commonjs"}'
+export TS_NODE_PROJECT="$TESTS_DIR/tsconfig.json"
+
+mocha \
+    --require ts-node/register \
+    --exclude "$TESTS_DIR/**/__*.ts" \
+    "$TESTS_DIR/**/*.ts"
