@@ -10,6 +10,8 @@ import {
     Rect,
 } from "./maths"
 
+import "./style.css"
+
 const WIDTH = 84
 const HEIGHT = 48
 const PIXEL_SIZE = 5
