@@ -22,13 +22,44 @@ import type {
     TEngineSystemEventMap,
 } from "./types"
 
-function LessPriorityThan(priority: number) {
-    return ([system]: [ISystem, [unknown, unknown]]) => {
+type ISystemEventsManager = {
+    start(receiver: Events.IReceiver): void
+    stop(receiver: Events.IReceiver): void
+}
+
+function createSystemEventsManager(
+    engine: IEngine,
+    controller: object,
+    events: TEngineSystemEventMap,
+) {
+    const callbacks = new Map()
+
+    const start = (receiver: Events.IReceiver) => {
+        for (const [eventKey, callback] of callbacks) {
+            receiver.on(eventKey, callback)
+        }
+    }
+
+    const stop = (receiver: Events.IReceiver) => {
+        receiver.off()
+    }
+
+    for (const [eventKey, handlerKey] of Object.entries(events) as Array<[string, string]>) {
+        callbacks.set(eventKey, (...args: Array<unknown>) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (controller as any)[handlerKey].call(controller, engine, ...args)
+        })
+    }
+
+    return { start, stop }
+}
+
+function PriorityLessThan(System: IOC.TConstructor<ISystem>) {
+    const priority = getSystemPriority(System)
+    return (system: ISystem) => {
         return getSystemPriority(Object.getPrototypeOf(system).constructor) < priority
     }
 }
-
-type TEngineSystemEventsCallbacks = Map<string, (...args: Array<any>) => void>
 
 class Engine<TRootData extends TEngineData> {
     private container_: IOC.Container
@@ -38,12 +69,17 @@ class Engine<TRootData extends TEngineData> {
     private requestAnimationFrameId_ = 0
     private running_ = false
 
-    private systemQueue_: Array<[ISystem, [Events.TEmitter, Events.IReceiver]]> = []
-    private systemEvents_: Map<ISystem, TEngineSystemEventsCallbacks> = new Map()
+    private systemsQueue_: Array<ISystem> = []
+    private systemsEvents_: Map<ISystem, [Events.TEmitter, Events.IReceiver]> = new Map()
+    private systemsEventsManagers_: Map<ISystem, ISystemEventsManager> = new Map()
 
     private animationFrameCallback_ = () => {
         if (this.running_) {
-            for (const [system, [emit]] of this.systemQueue_) {
+            for (const system of this.systemsQueue_) {
+                // By construction we know that the system exists in the map.
+                // We can safely use the non null assertion operator here.
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                const [emit,] = this.systemsEvents_.get(system)!
                 system.update?.(this.registry_, emit)
             }
             this.requestAnimationFrameId_ =
@@ -53,10 +89,8 @@ class Engine<TRootData extends TEngineData> {
 
     private getSystem_(
         System: IOC.TConstructor<ISystem>,
-    ): [ISystem, [Events.TEmitter, Events.IReceiver]] | undefined {
-        return this.systemQueue_.find(([system]) => {
-            return system.constructor === System
-        })
+    ): ISystem | undefined {
+        return this.systemsQueue_.find(system => system.constructor === System)
     }
 
     private hasSystem_(
@@ -65,59 +99,31 @@ class Engine<TRootData extends TEngineData> {
         return this.getSystem_(System) != null
     }
 
-    private createSystemEventsCallbacks_(
-        SystemEvents: TEngineSystemEventMap,
-    ): TEngineSystemEventsCallbacks {
-        const callbacks = new Map()
-        for (const [eventKey, handlerKey] of Object.entries(SystemEvents) as Array<[string, string]>) {
-            callbacks.set(eventKey, (...args: Array<unknown>) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (this.controller_ as any)[handlerKey].call(this.controller_, this, ...args)
-            })
-        }
-        return callbacks
-    }
-
-    private createSystemEntry_(
-        System: IOC.TConstructor<ISystem>,
-    ): [ISystem, [Events.TEmitter, Events.IReceiver]] {
-        return [
-            this.container_.get(System),
-            Events.useEvents(),
-        ]
-    }
-
-    private insertSystemEntry_(
-        System: IOC.TConstructor<ISystem>,
-    ): void {
-        const priority = getSystemPriority(System)
-        const entry = this.createSystemEntry_(System)
-        const index = this.systemQueue_.findIndex(LessPriorityThan(priority))
-        if (index === -1) {
-            this.systemQueue_.push(entry)
-        } else {
-            this.systemQueue_.splice(index, 0, entry)
-        }
-    }
-
     private registerSystem_(
         System: IOC.TConstructor<ISystem>,
-    ): void {
-        if (!this.hasSystem_(System)) {
-            this.registry.registerSystem(System)
-            this.insertSystemEntry_(System)
-        }
-    }
-
-    private registerSystemEvents_(
-        System: IOC.TConstructor<ISystem>,
         SystemEvents: TEngineSystemEventMap,
     ): void {
         if (!this.hasSystem_(System)) {
-            this.systemEvents_.set(
-                this.container_.get(System),
-                this.createSystemEventsCallbacks_(SystemEvents),
-            )
+            const system = this.container_.get(System)
+            const systemQueueIndex = this.systemsQueue_.findIndex(PriorityLessThan(System))
+            const systemEventsManager = createSystemEventsManager(this, this.controller_, SystemEvents)
+            const [emit, receiver] = Events.useEvents()
+
+            // Insert system in the queue
+            if (systemQueueIndex === -1) {
+                this.systemsQueue_.push(system)
+            } else {
+                this.systemsQueue_.splice(systemQueueIndex, 0, system)
+            }
+
+            // Register system emitter/receiver
+            this.systemsEvents_.set(system, [emit, receiver])
+
+            // Register system events
+            this.systemsEventsManagers_.set(system, systemEventsManager)
+
+            // Register system in the registry
+            this.registry.registerSystem(System)
         }
     }
 
@@ -130,9 +136,8 @@ class Engine<TRootData extends TEngineData> {
         this.registry_ = this.container_.get(Registry)
         this.controller_ = this.container_.get(RootComponent)
 
-        for (const [System, Events] of metadata.Systems) {
-            this.registerSystem_(System)
-            this.registerSystemEvents_(System, Events)
+        for (const [System, SystemEvents] of metadata.Systems) {
+            this.registerSystem_(System, SystemEvents)
         }
     }
 
@@ -143,19 +148,32 @@ class Engine<TRootData extends TEngineData> {
     public events<TEvents extends Events.TEventMap>(
         System: IOC.TConstructor<ISystem<TEvents>>
     ): Events.IReceiver<TEvents> {
-        if (!this.hasSystem_(System)) {
+        const system = this.getSystem_(System)
+
+        if (system == null) {
             throw new Error(`System ${System.name} does not exist`)
         }
+
         // At this point we know that the system exists, so we can safely use
         // the non null assertion operator.
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const [, [, receiver]] = this.getSystem_(System)!
+        const [, receiver] = this.systemsEvents_.get(system)!
         return receiver as Events.IReceiver<TEvents>
     }
 
     public start() {
         if (!this.running_) {
-            for (const [system, [emit]] of this.systemQueue_) {
+            for (const system of this.systemsQueue_) {
+                // By construction we know that the system exists in the map.
+                // We can safely use the non null assertion operator here.
+
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                const systemEventsManager = this.systemsEventsManagers_.get(system)!
+
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                const [emit, receiver] = this.systemsEvents_.get(system)!
+
+                systemEventsManager.start(receiver)
                 system.start?.(this.registry_, emit)
             }
             this.reset()
@@ -169,7 +187,17 @@ class Engine<TRootData extends TEngineData> {
         if (this.running_) {
             this.running_ = false
             global.cancelAnimationFrame(this.requestAnimationFrameId_)
-            for (const [system, [emit]] of this.systemQueue_) {
+            for (const system of this.systemsQueue_) {
+                // By construction we know that the system exists in the map.
+                // We can safely use the non null assertion operator here.
+
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                const systemEventsManager = this.systemsEventsManagers_.get(system)!
+
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                const [emit, receiver] = this.systemsEvents_.get(system)!
+
+                systemEventsManager.stop(receiver)
                 system.stop?.(this.registry_, emit)
             }
         }
@@ -178,7 +206,11 @@ class Engine<TRootData extends TEngineData> {
 
     public reset() {
         this.requestAnimationFrameId_ = 0
-        for (const [system, [emit]] of this.systemQueue_) {
+        for (const system of this.systemsQueue_) {
+            // By construction we know that the system exists in the map.
+            // We can safely use the non null assertion operator here.
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const [emit] = this.systemsEvents_.get(system)!
             system.reset?.(this.registry_, emit)
         }
         return this
