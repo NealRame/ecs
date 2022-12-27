@@ -32,23 +32,21 @@ function createSystemEventsManager(
     controller: object,
     events: TEngineSystemEventMap,
 ) {
-    const callbacks = new Map()
+    const eventHandlers = Object.entries(events).reduce((handlers, [eventKey, handlerKey]) => {
+        return Object.assign(handlers, {
+            [eventKey]: (...args: Array<unknown>) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (controller as any)[handlerKey as string].call(controller, engine, ...args)
+            }
+        })
+    }, {}) as unknown as Events.TEventHandlers
 
     const start = (receiver: Events.IReceiver) => {
-        for (const [eventKey, callback] of callbacks) {
-            receiver.on(eventKey, callback)
-        }
+        receiver.connect(eventHandlers)
     }
 
     const stop = (receiver: Events.IReceiver) => {
-        receiver.off()
-    }
-
-    for (const [eventKey, handlerKey] of Object.entries(events) as Array<[string, string]>) {
-        callbacks.set(eventKey, (...args: Array<unknown>) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (controller as any)[handlerKey].call(controller, engine, ...args)
-        })
+        receiver.disconnect(eventHandlers)
     }
 
     return { start, stop }
@@ -107,7 +105,7 @@ class Engine<TRootData extends TEngineData> {
             const system = this.container_.get(System)
             const systemQueueIndex = this.systemsQueue_.findIndex(PriorityLessThan(System))
             const systemEventsManager = createSystemEventsManager(this, this.controller_, SystemEvents)
-            const [emit, receiver] = Events.useEvents()
+            const [emit, receiver] = Events.createEmitterReceiver()
 
             // Insert system in the queue
             if (systemQueueIndex === -1) {
