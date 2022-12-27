@@ -6,7 +6,7 @@
   "scripts": {
     "build": "./scripts/build.sh",
     "clean": "./scripts/clean.sh",
-    "dev": "webpack serve --config ./src/app/webpack.config.js",
+    "dev": "webpack serve --config ./src/tests/app/webpack.config.js",
     "test": "./scripts/test.sh",
     "watch-test": "npm-watch test"
   },

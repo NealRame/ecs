@@ -9,7 +9,7 @@ module.exports = {
     devServer: {
         static: outputDirectory,
     },
-    entry: "./src/app/index.ts",
+    entry: "./src/tests/app/index.ts",
     output: {
         clean: true,
         filename: "bundle.js",
@@ -19,7 +19,7 @@ module.exports = {
         new HtmlWebpackPlugin({
             title: "Development",
             filename: "index.html",
-            template: "./src/app/index.html",
+            template: "./src/tests/app/index.html",
         }),
     ],
     mode: "development",
