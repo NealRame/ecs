@@ -7,8 +7,8 @@ import {
 } from "./component"
 
 import {
-    SystemMetadataKey,
-} from "./constants"
+    getSystemEntitiesPredicate,
+} from "./decorators/system"
 
 import {
     EntitySet,
@@ -63,14 +63,13 @@ export class Registry implements IRegistry {
         system: ISystem,
     ) {
         const components = this.componentsMap_.get(entity)
-        if (components != null) {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const entities = this.systemsEntities_.get(system)!
-            const { entities: predicate } = Reflect.getMetadata(SystemMetadataKey, system.constructor)
+        const systemEntities = this.systemsEntities_.get(system)
+        if (components != null && systemEntities != null) {
+            const predicate = getSystemEntitiesPredicate(system)
             if (predicate(components)) {
-                entities.add(entity)
+                systemEntities.add(entity)
             } else {
-                entities.delete(entity)
+                systemEntities.delete(entity)
             }
         }
     }

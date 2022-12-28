@@ -1,11 +1,6 @@
 import "reflect-metadata"
 
 import {
-    TEventKey,
-    TEventMap,
-} from "@nealrame/ts-events"
-
-import {
     Service,
     ServiceLifecycle,
     TConstructor,
@@ -20,18 +15,39 @@ import * as Query from "../query"
 import type {
     ISystem,
     ISystemOptions,
+    TEntityQueryPredicate,
 } from "../types"
 
 export type ISystemMetadata = Required<ISystemOptions>
 
 export function getSystemPriority(
-    System: TConstructor,
+    system: TConstructor<ISystem> | ISystem,
 ): number {
-    const metadata = Reflect.getMetadata(SystemMetadataKey, System)
+    if (typeof system !== "function") {
+        return getSystemPriority(Object.getPrototypeOf(system).constructor)
+    }
+
+    const metadata = Reflect.getMetadata(SystemMetadataKey, system)
     if (metadata == null) {
         throw new Error(`System ${System.name} does not exists.`)
     }
+
     return (metadata as ISystemMetadata).priority
+}
+
+export function getSystemEntitiesPredicate(
+    system: TConstructor<ISystem> | ISystem,
+): TEntityQueryPredicate {
+    if (typeof system !== "function") {
+        return getSystemEntitiesPredicate(Object.getPrototypeOf(system).constructor)
+    }
+
+    const metadata = Reflect.getMetadata(SystemMetadataKey, system)
+    if (metadata == null) {
+        throw new Error(`System ${System.name} does not exists.`)
+    }
+
+    return (metadata as ISystemMetadata).entities
 }
 
 export function System(
