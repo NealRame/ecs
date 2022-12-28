@@ -55,7 +55,6 @@ function PriorityLessThan(System: IOC.TConstructor<ISystem>) {
 }
 
 class Engine {
-    // private container_: IOC.Container
     private controller_: object
     private registry_: IRegistry
 
