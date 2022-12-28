@@ -7,7 +7,6 @@ import {
 } from "./component"
 
 import {
-    EntityFactory,
     SystemMetadataKey,
 } from "./constants"
 
@@ -20,7 +19,6 @@ import {
 } from "./queryset"
 
 import type {
-    IEntityFactory,
     IComponentContainer,
     IRegistry,
     IEntityQuerySet,
@@ -30,6 +28,10 @@ import type {
 } from "./types"
 
 export class Registry implements IRegistry {
+    private container_: IOC.Container
+
+    private nextEntityId_ = 0
+
     private entities_: EntitySet = new EntitySet()
     private componentsMap_: Map<TEntity, ComponentContainer> = new Map()
     private systemsEntities_: Map<ISystem, EntitySet> = new Map()
@@ -73,16 +75,15 @@ export class Registry implements IRegistry {
         }
     }
 
-    constructor(
-        @IOC.Inject(IOC.Container) private container_: IOC.Container,
-        @IOC.Inject(EntityFactory) private entityFactory_: IEntityFactory,
-    ) { }
+    constructor() {
+        this.container_ = new IOC.Container()
+    }
 
     // Entity management
     public createEntity(
         ...componentTypes: Array<IOC.TConstructor>
     ) {
-        const entity = this.entityFactory_.create()
+        const entity = this.nextEntityId_++
         this.registerEntity_(entity, componentTypes)
         return entity
     }
@@ -91,14 +92,13 @@ export class Registry implements IRegistry {
         count: number,
         ...componentTypes: Array<IOC.TConstructor>
     ) {
-        const entities = this.entityFactory_.createMultiple(count)
-        for (const entity of entities) {
-            this.registerEntity_(entity, componentTypes)
-        }
-        return entities
+        return Array.from(
+            { length: count },
+            () => this.createEntity(...componentTypes)
+        )
     }
 
-    public destroyEntity(entity: TEntity) {
+    public removeEntity(entity: TEntity) {
         if (this.hasEntity(entity)) {
             this.componentsMap_.delete(entity)
             this.entities_.delete(entity)
@@ -108,12 +108,28 @@ export class Registry implements IRegistry {
         }
     }
 
+    public removeEntities(
+        entities: Iterable<TEntity>,
+    ) {
+        for (const entity of entities) {
+            this.removeEntity(entity)
+        }
+    }
+
+    public removeAllEntities() {
+        this.entities_.clear()
+        this.componentsMap_.clear()
+        for (const [, systemEntities] of this.systemsEntities_) {
+            systemEntities.clear()
+        }
+    }
+
     public hasEntity(entity: TEntity)
         : boolean {
         return this.entities_.has(entity)
     }
 
-    public getComponents(entity: TEntity)
+    public getEntityComponents(entity: TEntity)
         : IComponentContainer {
         const components = this.componentsMap_.get(entity)
         if (components == null) {

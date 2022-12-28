@@ -16,11 +16,6 @@ export type TConstructorsOf<T extends Array<unknown>> = {
 
 export type TEntity = number
 
-export interface IEntityFactory {
-    create(): TEntity
-    createMultiple(count: number): Array<TEntity>
-}
-
 export interface IComponentContainer {
     add<T>(component: T): T
     add<T>(componentType: TConstructor<T>): T
@@ -88,7 +83,12 @@ export interface IRegistry {
     createEntities(count: number, ...componentTypes: Array<TConstructor>): Array<TEntity>
 
     hasEntity(entity: TEntity): boolean
-    getComponents(entity: TEntity): IComponentContainer
+
+    getEntityComponents(entity: TEntity): IComponentContainer
+
+    removeEntity(entity: TEntity): void
+    removeEntities(entities: Iterable<TEntity>): void
+    removeAllEntities(): void
 
     readonly entities: IEntityQuerySet
     filterEntities(predicate: TEntityQueryPredicate): IEntityQuerySet
@@ -98,7 +98,6 @@ export interface IRegistry {
 }
 
 export type TEngineOptions = {
-    EntityFactory?: IEntityFactory
     Systems?: Array<TConstructor<ISystem> >
 }
 
@@ -107,7 +106,6 @@ export type TEngineSystemEventMap<TEvents extends TDefaultEventMap = TDefaultEve
 }
 
 export type TEngineMetadata = {
-    EntityFactory: IEntityFactory
     Systems: Map<TConstructor<ISystem>, TEngineSystemEventMap>
 }
 

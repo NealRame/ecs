@@ -15,10 +15,6 @@ import {
     EngineMetadataKey,
 } from "../constants"
 
-import {
-    BasicEntityFactory,
-} from "../entity"
-
 import type {
     IEngine,
     ISystem,
@@ -37,7 +33,6 @@ export function getOrCreateEngineMetadata(
 ): TEngineMetadata {
     if (!Reflect.hasMetadata(EngineMetadataKey, Target)) {
         Reflect.defineMetadata(EngineMetadataKey, {
-            EntityFactory: BasicEntityFactory,
             Systems: new Map(),
         }, Target)
     }
@@ -49,10 +44,6 @@ export function Engine(options: TEngineOptions) {
         Service({ lifecycle: ServiceLifecycle.Singleton })(Target)
 
         const metadata = getOrCreateEngineMetadata(Target)
-
-        if (options.EntityFactory != null) {
-            metadata.EntityFactory = options.EntityFactory
-        }
 
         if (options.Systems != null) {
             for (const System of options.Systems) {

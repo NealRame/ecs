@@ -2,10 +2,6 @@ import * as IOC from "@nealrame/ts-injector"
 import * as Events from "@nealrame/ts-events"
 
 import {
-    EntityFactory,
-} from "./constants"
-
-import {
     getEngineMetadata,
     getSystemPriority,
 } from "./decorators"
@@ -60,7 +56,7 @@ function PriorityLessThan(System: IOC.TConstructor<ISystem>) {
 }
 
 class Engine<TRootData extends TEngineData> {
-    private container_: IOC.Container
+    // private container_: IOC.Container
     private controller_: TRootData
     private registry_: IRegistry
 
@@ -102,7 +98,7 @@ class Engine<TRootData extends TEngineData> {
         SystemEvents: TEngineSystemEventMap,
     ): void {
         if (!this.hasSystem_(System)) {
-            const system = this.container_.get(System)
+            const system = this.registry.registerSystem(System)
             const systemQueueIndex = this.systemsQueue_.findIndex(PriorityLessThan(System))
             const systemEventsManager = createSystemEventsManager(this, this.controller_, SystemEvents)
             const [emit, receiver] = Events.createEmitterReceiver()
@@ -119,22 +115,15 @@ class Engine<TRootData extends TEngineData> {
 
             // Register system events
             this.systemsEventsManagers_.set(system, systemEventsManager)
-
-            // Register system in the registry
-            this.registry.registerSystem(System)
         }
     }
 
     constructor(RootComponent: IOC.TConstructor<TRootData>) {
-        const metadata = getEngineMetadata(RootComponent)
+        this.controller_ = new RootComponent()
+        this.registry_ = new Registry()
 
-        this.container_ = new IOC.Container()
-        this.container_.set(EntityFactory, metadata.EntityFactory)
-
-        this.registry_ = this.container_.get(Registry)
-        this.controller_ = this.container_.get(RootComponent)
-
-        for (const [System, SystemEvents] of metadata.Systems) {
+        const { Systems } = getEngineMetadata(RootComponent)
+        for (const [System, SystemEvents] of Systems) {
             this.registerSystem_(System, SystemEvents)
         }
     }

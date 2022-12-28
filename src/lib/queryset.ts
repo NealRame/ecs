@@ -26,7 +26,7 @@ export class EntityQuerySet implements IEntityQuerySet {
 
     *all() {
         for (const entity of this.entities_.all()) {
-            if (this.predicate_?.(this.registry_.getComponents(entity)) ?? true) {
+            if (this.predicate_?.(this.registry_.getEntityComponents(entity)) ?? true) {
                 yield entity
             }
         }
@@ -34,7 +34,7 @@ export class EntityQuerySet implements IEntityQuerySet {
 
     *allReversed() {
         for (const entity of this.entities_.allReversed()) {
-            if (this.predicate_?.(this.registry_.getComponents(entity)) ?? true) {
+            if (this.predicate_?.(this.registry_.getEntityComponents(entity)) ?? true) {
                 yield entity
             }
         }
@@ -42,7 +42,7 @@ export class EntityQuerySet implements IEntityQuerySet {
 
     first(): TEntity | undefined {
         for (const entity of this.entities_.all()) {
-            if (this.predicate_?.(this.registry_.getComponents(entity)) ?? true) {
+            if (this.predicate_?.(this.registry_.getEntityComponents(entity)) ?? true) {
                 return entity
             }
         }
@@ -50,7 +50,7 @@ export class EntityQuerySet implements IEntityQuerySet {
 
     last(): TEntity | undefined {
         for (const entity of this.entities_.allReversed()) {
-            if (this.predicate_?.(this.registry_.getComponents(entity)) ?? true) {
+            if (this.predicate_?.(this.registry_.getEntityComponents(entity)) ?? true) {
                 return entity
             }
         }
@@ -66,7 +66,7 @@ export class EntityQuerySet implements IEntityQuerySet {
         predicate: TEntityQueryPredicate
     ): TEntity | undefined {
         for (const entity of this.entities_.all()) {
-            if (predicate(this.registry_.getComponents(entity))) {
+            if (predicate(this.registry_.getEntityComponents(entity))) {
                 return entity
             }
         }
@@ -77,7 +77,7 @@ export class EntityQuerySet implements IEntityQuerySet {
     ): TEntityQueryAggregate {
         const aggregator: Record<string | number | symbol, EntitySet> = {}
         for (const entity of this.entities_.all()) {
-            const components = this.registry_.getComponents(entity)
+            const components = this.registry_.getEntityComponents(entity)
             const k = key(components)
             if (aggregator[k] == null) {
                 aggregator[k] = new EntitySet()
@@ -95,7 +95,7 @@ export class EntityQuerySet implements IEntityQuerySet {
     ): [IEntityQuerySet, IEntityQuerySet] {
         const [filtered, rejected] = [new EntitySet(), new EntitySet()]
         for (const entity of this.entities_.all()) {
-            (pred(this.registry_.getComponents(entity))
+            (pred(this.registry_.getEntityComponents(entity))
                 ? filtered
                 : rejected
             ).add(entity)

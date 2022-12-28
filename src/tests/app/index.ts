@@ -48,8 +48,8 @@ type GameSystemEvents = {
         oldTail: ECS.TEntity,
     ): void {
         const newTail = registry.createEntity(Position, Course, SnakeTail)
-        const newTailComponents = registry.getComponents(newTail)
-        const oldTailComponents = registry.getComponents(oldTail)
+        const newTailComponents = registry.getEntityComponents(newTail)
+        const oldTailComponents = registry.getEntityComponents(oldTail)
         Vector2D.wrap(newTailComponents.get(Course)).set(Vector2D.zero())
         Vector2D.wrap(newTailComponents.get(Position)).set(
             oldTailComponents.get(Position)
@@ -58,7 +58,7 @@ type GameSystemEvents = {
 
     reset(registry: ECS.IRegistry): void {
         const game = registry.createEntity(Game)
-        const gameComponent = registry.getComponents(game).get(Game)
+        const gameComponent = registry.getEntityComponents(game).get(Game)
         gameComponent.points = 0
         gameComponent.width = Math.round(WIDTH/3)
         gameComponent.height = Math.round(HEIGHT/3)
@@ -68,7 +68,7 @@ type GameSystemEvents = {
             ...registry.createEntities(4, Position, Course, SnakeTail),
         ]
         for (let i = 0; i < snake.length; ++i) {
-            const components = registry.getComponents(snake[i])
+            const components = registry.getEntityComponents(snake[i])
             Vector2D.wrap(components.get(Position)).set({
                 x: gameComponent.width - snake.length + i,
                 y: 0,
@@ -77,7 +77,7 @@ type GameSystemEvents = {
         }
 
         const fruit = registry.createEntity(Position, Fruit)
-        const fruitComponents = registry.getComponents(fruit)
+        const fruitComponents = registry.getEntityComponents(fruit)
         Vector2D.wrap(fruitComponents.get(Position)).set({
             x: Math.round(gameComponent.width/2),
             y: Math.round(gameComponent.height/2),
@@ -111,10 +111,10 @@ type GameSystemEvents = {
             return
         }
 
-        const gameComponent = registry.getComponents(game).get(Game)
+        const gameComponent = registry.getEntityComponents(game).get(Game)
 
-        const snakeHeadPosition = registry.getComponents(snakeHead).get(Position)
-        const fruitPosition = registry.getComponents(fruit).get(Position)
+        const snakeHeadPosition = registry.getEntityComponents(snakeHead).get(Position)
+        const fruitPosition = registry.getEntityComponents(fruit).get(Position)
 
         // check for wall collision
         if (!Rect.fromSize(gameComponent).contains(snakeHeadPosition)) {
@@ -124,7 +124,7 @@ type GameSystemEvents = {
 
         // check for snake collision
         for (const entity of aggregate["snakeTail"]?.all() ?? []) {
-            const snakeTailPosition = registry.getComponents(entity).get(Position)
+            const snakeTailPosition = registry.getEntityComponents(entity).get(Position)
             if (Vector2D.equals(snakeHeadPosition, snakeTailPosition)) {
                 emit("tailCollision")
                 return
@@ -178,7 +178,7 @@ type GameSystemEvents = {
         this.updateFrame_ = (this.updateFrame_ + 1)%SNAKE_SPEED
 
         const head = registry.getSystemEntities(this).find(ECS.query.HasAll(SnakeHead))
-        const headComponents = registry.getComponents(head)
+        const headComponents = registry.getEntityComponents(head)
         const headCourse = Vector2D.wrap(headComponents.get(Course))
 
         if (this.nextCourse_ == null) {
@@ -195,7 +195,7 @@ type GameSystemEvents = {
             // snake entities have been create from tail to head so we need to
             // iterate them in reverse order.
             for (const entity of registry.getSystemEntities(this)) {
-                const components = registry.getComponents(entity)
+                const components = registry.getEntityComponents(entity)
                 const course = Vector2D.wrap(components.get(Course))
 
                 Vector2D.wrap(components.get(Position)).add(course)
@@ -237,7 +237,7 @@ type GameSystemEvents = {
         this.context_.scale(this.pixelResolution_, this.pixelResolution_)
 
         for (const entity of registry.getSystemEntities(this)) {
-            const components = registry.getComponents(entity)
+            const components = registry.getEntityComponents(entity)
             const position = components.get(Position)
 
             if (components.has(Fruit)) {

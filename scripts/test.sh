@@ -5,6 +5,7 @@ export TS_NODE_COMPILER_OPTIONS='{"module": "commonjs"}'
 export TS_NODE_PROJECT="$TESTS_DIR/tsconfig.json"
 
 mocha \
-    --require ts-node/register \
     --exclude "$TESTS_DIR/**/__*.ts" \
+    --reporter min \
+    --require ts-node/register \
     "$TESTS_DIR/**/*.ts"
