@@ -109,8 +109,6 @@ export type TEngineMetadata = {
     Systems: Map<TConstructor<ISystem>, TEngineSystemEventMap>
 }
 
-export type TEngineData = object
-
 export interface IEngine {
     readonly registry: IRegistry,
 

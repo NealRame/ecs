@@ -14,7 +14,6 @@ import type {
     IEngine,
     IRegistry,
     ISystem,
-    TEngineData,
     TEngineSystemEventMap,
 } from "./types"
 
@@ -55,9 +54,9 @@ function PriorityLessThan(System: IOC.TConstructor<ISystem>) {
     }
 }
 
-class Engine<TRootData extends TEngineData> {
+class Engine {
     // private container_: IOC.Container
-    private controller_: TRootData
+    private controller_: object
     private registry_: IRegistry
 
     private requestAnimationFrameId_ = 0
@@ -118,11 +117,11 @@ class Engine<TRootData extends TEngineData> {
         }
     }
 
-    constructor(RootComponent: IOC.TConstructor<TRootData>) {
-        this.controller_ = new RootComponent()
+    constructor(Controller: IOC.TConstructor) {
+        this.controller_ = new Controller()
         this.registry_ = new Registry()
 
-        const { Systems } = getEngineMetadata(RootComponent)
+        const { Systems } = getEngineMetadata(Controller)
         for (const [System, SystemEvents] of Systems) {
             this.registerSystem_(System, SystemEvents)
         }
@@ -204,8 +203,8 @@ class Engine<TRootData extends TEngineData> {
     }
 }
 
-export function createEngine<RootData extends TEngineData>(
-    RootComponent: IOC.TConstructor<RootData>,
+export function createEngine(
+    Controller: IOC.TConstructor,
 ): IEngine {
-    return new Engine(RootComponent)
+    return new Engine(Controller)
 }
