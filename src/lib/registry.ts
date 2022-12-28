@@ -12,7 +12,7 @@ import {
 
 import {
     EntitySet,
-} from "./entity"
+} from "./entityset"
 
 import {
     EntityQuerySet,

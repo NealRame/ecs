@@ -1,6 +1,6 @@
 import {
     EntitySet,
-} from "./entity"
+} from "./entityset"
 
 import type {
     IRegistry,
