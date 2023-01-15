@@ -9,7 +9,7 @@
             "request": "launch",
             "runtimeExecutable": "canary",
             "name": "Launch Chrome against localhost",
-            "url": "http://localhost:8080",
+            "url": "http://localhost:5173",
             "webRoot": "${workspaceFolder}"
         }
     ]
